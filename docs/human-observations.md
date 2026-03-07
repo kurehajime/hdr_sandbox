@@ -22,7 +22,7 @@
 | probe_cicp_bt709_srgb | `candidate_probe_cicp_bt709_srgb.png` | todo | TODO | 新規: primaries+transfer同時変更 |
 | probe_cicp_bt2020_pq_limited | `candidate_probe_cicp_bt2020_pq_limited.png` | todo | TODO | 新規: rangeのみFull→Limitedに変更 |
 | probe_cicp_bt2020_pq_matrix_1 | `candidate_probe_cicp_bt2020_pq_matrix_1.png` | todo | TODO | 新規: matrixのみ0→1に変更 |
-
+| threshold_zoom_matrix | `candidate_probe_threshold_zoom_matrix.png` | todo | https://x.com/kurehajime/status/2030297528013554096 | 白より白く見える領域はなかった |
 ## observed 値の凡例
 
 - `glows`: 光って見える
