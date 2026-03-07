@@ -9,6 +9,11 @@ npm install
 npm run gen:jswasm
 ```
 
+補足:
+
+- `sample/success_sample.png` から iCCP を読めない場合は `generated/icc_bt2020_pq_from_success.icc` へ自動フォールバック。
+- WASM ではなく JS 経路を強制する場合は `npm run gen:jswasm -- --force-js-fallback`。
+
 ## 2. 生成+フォールバック込み
 
 ```bash
@@ -21,7 +26,7 @@ npm run gen
 ## 3. 投稿前チェック（1コマンド）
 
 ```bash
-npm run precheck:post
+npm run precheck
 ```
 
 - 出力先日付は JST 当日を自動採番 (`docs/observation-status-YYYY-MM-DD.*`)。

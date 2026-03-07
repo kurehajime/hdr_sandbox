@@ -5,7 +5,8 @@
   "scripts": {
     "gen:jswasm": "node src/jswasm-pipeline/cli.mjs --success-ref sample/success_sample.png --outdir generated",
     "gen": "node scripts/generate_candidates.mjs",
-    "precheck:post": "node scripts/posting_precheck.mjs",
-    "impl:run": "npm run gen && npm run precheck:post"
+    "precheck": "node scripts/posting_precheck.mjs",
+    "precheck:post": "npm run precheck",
+    "impl:run": "npm run gen && npm run precheck"
   }
 }

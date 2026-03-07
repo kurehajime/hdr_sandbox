@@ -73,7 +73,14 @@ export async function extractIccFromPng(pngPath) {
   throw new Error(`iCCP not found: ${pngPath}`);
 }
 
-async function loadMulDiv255() {
+async function loadMulDiv255({ forceJsFallback = false } = {}) {
+  if (forceJsFallback) {
+    return {
+      mode: "js-fallback-forced",
+      mulDiv255: (a, b) => Math.floor(((a >>> 0) * (b >>> 0)) / 255) >>> 0,
+    };
+  }
+
   try {
     const { instance } = await WebAssembly.instantiate(MUL_DIV_255_WASM_BYTES);
     if (typeof instance.exports.mulDiv255 !== "function") {
@@ -88,6 +95,44 @@ async function loadMulDiv255() {
       mode: "js-fallback",
       mulDiv255: (a, b) => Math.floor(((a >>> 0) * (b >>> 0)) / 255) >>> 0,
     };
+  }
+}
+
+async function resolveIccProfile({ successRef, iccFallbackPath = "", allowNoIccFallback = false }) {
+  try {
+    return {
+      profile: await extractIccFromPng(successRef),
+      source: `success-ref:${successRef}`,
+    };
+  } catch (err) {
+    if (iccFallbackPath) {
+      try {
+        return {
+          profile: await fs.readFile(iccFallbackPath),
+          source: `icc-fallback:${iccFallbackPath}`,
+          warning: `extract_iCCP_failed:${err.message}`,
+        };
+      } catch (fallbackErr) {
+        if (allowNoIccFallback) {
+          return {
+            profile: null,
+            source: "none",
+            warning: `extract_iCCP_failed:${err.message};icc_fallback_failed:${fallbackErr.message}`,
+          };
+        }
+        throw new Error(`iCCP extraction failed (${err.message}) and icc fallback read failed (${fallbackErr.message})`);
+      }
+    }
+
+    if (allowNoIccFallback) {
+      return {
+        profile: null,
+        source: "none",
+        warning: `extract_iCCP_failed:${err.message}`,
+      };
+    }
+
+    throw err;
   }
 }
 
@@ -154,23 +199,34 @@ export async function writeRgba16Png({ outPath, width, height, rgba16be, iccProf
   await fs.writeFile(outPath, Buffer.concat([PNG_SIG, ...chunks]));
 }
 
-export async function runMinimalPipeline({ successRef, outdir, width = 400, height = 400, alpha8Patch = 64 }) {
+export async function runMinimalPipeline({
+  successRef,
+  outdir,
+  width = 400,
+  height = 400,
+  alpha8Patch = 64,
+  iccFallbackPath = "generated/icc_bt2020_pq_from_success.icc",
+  allowNoIccFallback = false,
+  forceJsFallback = false,
+}) {
   const w = clampInt(width, 16, 4096, "width");
   const h = clampInt(height, 16, 4096, "height");
   const a8 = clampInt(alpha8Patch, 0, 255, "alpha8Patch");
 
-  const icc = await extractIccFromPng(successRef);
-  const op = await loadMulDiv255();
+  const iccResolved = await resolveIccProfile({ successRef, iccFallbackPath, allowNoIccFallback });
+  const op = await loadMulDiv255({ forceJsFallback });
   const pattern = buildMinimalPattern({ width: w, height: h, alpha8Patch: a8, mulDiv255: op.mulDiv255 });
 
   const successPath = path.join(outdir, "candidate_success_like.png");
   const noIccPath = path.join(outdir, "candidate_fail_no_iccp.png");
 
-  await writeRgba16Png({ outPath: successPath, width: w, height: h, rgba16be: pattern, iccProfile: icc });
+  await writeRgba16Png({ outPath: successPath, width: w, height: h, rgba16be: pattern, iccProfile: iccResolved.profile });
   await writeRgba16Png({ outPath: noIccPath, width: w, height: h, rgba16be: pattern, iccProfile: null });
 
   return {
     wasmMode: op.mode,
+    iccSource: iccResolved.source,
+    warning: iccResolved.warning,
     generated: [successPath, noIccPath],
   };
 }

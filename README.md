@@ -29,6 +29,8 @@ npm run gen:jswasm
 - 実装: `src/jswasm-pipeline/`
 - 出力: `generated/candidate_success_like.png`, `generated/candidate_fail_no_iccp.png`
 - WASMの `mulDiv255` が使えない場合は、自動でJS計算へフォールバック（同一CLIで継続）
+- `sample/success_sample.png` から iCCP を読めない場合は `generated/icc_bt2020_pq_from_success.icc` を自動使用
+- デバッグ時は `npm run gen:jswasm -- --force-js-fallback` で JS フォールバック経路を強制可能
 
 ### 2) 生成コマンド（失敗時フォールバック付き）
 
@@ -42,7 +44,7 @@ npm run gen
 ### 3) 投稿前チェック（1コマンド）
 
 ```bash
-npm run precheck:post
+npm run precheck
 ```
 
 - `check_png_hdr.py` と `check_human_observations.py` を順に実行
