@@ -1,16 +1,29 @@
 # 仮説更新メモ（2026-03-07）
 
-更新日: 2026-03-07
+更新日: 2026-03-07  
 対象: `docs/reproduction-candidates.md` の人間検証結果を反映
 
 ## 1. 事実（人間検証）
 
-人間検証で得られた観測:
+### 第1段（基本4候補）
 
 - `candidate_success_like` → 光って見えた
 - `candidate_fail_rgb_no_alpha` → 光って見えた
 - `candidate_fail_8bit` → 光って見えた
 - `candidate_fail_no_iccp` → 光って見えない
+
+### 第2段（extended候補・既実施分）
+
+- `candidate_probe_8bit_rgb_no_alpha.png`
+  - 成功。十分に光って見えた
+  - https://x.com/kurehajime/status/2030240958701568112
+- `candidate_probe_alpha_255.png`
+  - 成功。十分に光って見えた
+  - https://x.com/kurehajime/status/2030241207994159531
+- `candidate_probe_alpha_0.png`
+  - 画像が真っ白でなにも見えず
+- `candidate_probe_size_512.png`
+  - 画像が真っ白でなにも見えず
 
 ## 2. 従来仮説の見直し
 
@@ -36,47 +49,43 @@
 要するに、従来の「16bit/alpha必須」から、
 **「iCCP/cicp主導仮説」**へ更新する。
 
-## 4. `candidate_fail_rgb_no_alpha` / `candidate_fail_8bit` が光った理由の切り分け方針
+## 4. `alpha=0` / `size=512` 白化観測の解釈（今回追記）
 
-2つの候補が光ったことにより、bit depth と alpha の個別寄与を切り分ける必要がある。
-そのため、`make_candidates.py --extended` で以下を生成するよう拡張した。
+`probe_alpha_0` と `probe_size_512` が「白化して見えた」ことは、
+**iCCP/cicp仮説の反証とは限らない**と解釈する。
 
-- `candidate_probe_8bit_rgb_no_alpha.png`
-  - 8bit + RGB(no alpha) を同時適用（2x2の第4点）
-- `candidate_probe_alpha_255.png`
-  - RGBAのalpha値を255固定（alpha値の影響確認）
-- `candidate_probe_alpha_0.png`
-  - RGBAのalpha値を0固定（alpha値の影響確認）
-- `candidate_probe_size_512.png`
-  - 512x512化（400x400固定の必要性確認）
+現時点の暫定解釈:
 
-## 5. 次実験（実機投稿）
+- `probe_alpha_0` の白化
+  - alpha=0（完全透明）により、投稿先/表示系で実質的に内容が見えなくなる経路がある可能性
+  - これは「HDR判定の失敗」ではなく、**表示合成（透明処理）由来の白化**の可能性が高い
+- `probe_size_512` の白化
+  - 512化そのものが原因とは断定できない
+  - 元画像由来の透明ピクセル分布やリサイズ後のalpha分布との相互作用で白化した可能性がある
 
-実機で上記4候補を投稿し、以下を確認する。
+つまり、今回の白化観測は **「透明度条件が強すぎて評価不能になった」** ケースとして扱い、
+`iCCP/cicp` 仮説は保留する。
 
-- `probe_8bit_rgb_no_alpha` が光るか
-  - 光る: bit depth / alpha の非必須性がさらに強化
-  - 光らない: 8bitとno-alphaの組み合わせで閾値を跨ぐ可能性
-- `probe_alpha_255` と `probe_alpha_0` の差
-  - 差なし: alpha値は本質条件ではない可能性
-  - 差あり: alpha値（または透過扱い）が判定に関与する可能性
-- `probe_size_512` が光るか
-  - 光る: 400x400固定不要
-  - 光らない: 解像度条件または周辺条件が存在
+## 5. 次実験（白化回避プローブ）
+
+白化要因（alpha=0や透明域）を避けつつ切り分けるため、`make_candidates.py --extended` を追加拡張した。
+
+追加候補:
+
+- `candidate_probe_alpha_1.png`
+  - alpha=1固定（0は回避、ほぼ透明）
+- `candidate_probe_alpha_gradient.png`
+  - alphaを 1..65535 のグラデーション（0を使わず透明度依存を観測）
+- `candidate_probe_size_512_nontransparent.png`
+  - 512x512 + alpha=255固定（サイズ要因のみを優先確認）
+
+これにより、以下を確認する:
+
+- alpha=0だけが白化トリガーか
+- 512サイズ自体が白化トリガーか
+- 透明度分布とリサイズの組み合わせで白化しているか
 
 ## 6. 当面の運用ルール
 
 - 比較表は `generated/comparison.md` の **legacy判定**（旧）と **relaxed判定**（新）を併記
 - 新しい投稿結果が出るまでは、仕様断定ではなく「仮説更新中」として扱う
-## 人間検証結果（X投稿）
-
-- `candidate_probe_8bit_rgb_no_alpha.png`
-  - 成功。十分に光って見えた
-  - https://x.com/kurehajime/status/2030240958701568112
-- `candidate_probe_alpha_255.png`
-  - 成功。十分に光って見えた
-  - https://x.com/kurehajime/status/2030241207994159531
-- `candidate_probe_alpha_0.png`
-  - 画像が真っ白でなにも見えず
-- `candidate_probe_size_512.png`
-  - 画像が真っ白でなにも見えず

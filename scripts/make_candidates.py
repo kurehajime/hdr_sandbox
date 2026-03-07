@@ -250,7 +250,17 @@ def build_candidates(
         arr16_alpha255[:, :, 3] = 65535
         arr16_alpha0 = arr16_rgba.copy()
         arr16_alpha0[:, :, 3] = 0
+        arr16_alpha1 = arr16_rgba.copy()
+        arr16_alpha1[:, :, 3] = 1
+
+        # 左→右に alpha を 1..65535 でグラデーション（0は使わない）
+        arr16_alpha_grad = arr16_rgba.copy()
+        grad = np.linspace(1, 65535, arr16_alpha_grad.shape[1], dtype=np.uint16)
+        arr16_alpha_grad[:, :, 3] = grad[np.newaxis, :]
+
         arr16_rgba_512 = _resize_like(arr16_rgba, (512, 512))
+        arr16_rgba_512_alpha255 = arr16_rgba_512.copy()
+        arr16_rgba_512_alpha255[:, :, 3] = 65535
 
         targets.extend(
             [
@@ -279,9 +289,33 @@ def build_candidates(
                     icc_success,
                 ),
                 (
+                    "probe_alpha_1",
+                    outdir / "candidate_probe_alpha_1.png",
+                    arr16_alpha1,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
+                    "probe_alpha_gradient",
+                    outdir / "candidate_probe_alpha_gradient.png",
+                    arr16_alpha_grad,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
                     "probe_size_512",
                     outdir / "candidate_probe_size_512.png",
                     arr16_rgba_512,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
+                    "probe_size_512_nontransparent",
+                    outdir / "candidate_probe_size_512_nontransparent.png",
+                    arr16_rgba_512_alpha255,
                     16,
                     6,
                     icc_success,
@@ -347,8 +381,11 @@ def write_report(results: list[CandidateResult], path: Path, *, extended: bool) 
                 "",
                 "extended候補の狙い:",
                 "- `probe_8bit_rgb_no_alpha`: 8bit と no-alpha を同時適用（2x2切り分けの第4点）",
-                "- `probe_alpha_255` / `probe_alpha_0`: alpha値そのものの寄与を確認",
-                "- `probe_size_512`: 400x400固定が必要かを確認",
+                "- `probe_alpha_255` / `probe_alpha_0`: alpha=255 と alpha=0 の極端条件を比較",
+                "- `probe_alpha_1`: alpha=1固定（完全透明を避けつつ極小alphaを確認）",
+                "- `probe_alpha_gradient`: alphaを1..65535で連続変化（alpha=0依存の白化を回避して観測）",
+                "- `probe_size_512`: 512化のみ（従来観測の再確認）",
+                "- `probe_size_512_nontransparent`: 512 + alpha=255固定（サイズ要因と透明要因の切り分け）",
             ]
         )
 
