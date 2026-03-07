@@ -195,6 +195,8 @@ ALPHA_LADDER_VALUES = [1, 2, 4, 8, 16, 24, 32, 48, 64, 96, 128, 192, 255]
 LUMA_LADDER_VALUES = [512, 1024, 2048, 4096, 8192, 16384, 24576, 32768, 49152, 65535]
 MATRIX_ALPHA_VALUES = [1, 2, 4, 8, 16, 24, 32, 48, 64, 96, 128, 160, 192, 224, 255]
 MATRIX_LUMA_VALUES = [512, 1024, 2048, 4096, 8192, 12288, 16384, 24576, 32768, 49152, 65535]
+ISOEFF_ALPHA_VALUES = [8, 12, 16, 24, 32, 48, 64, 96, 128, 160, 192, 224, 255]
+ISOEFF_EFFECTIVE_LEVELS = [0.06, 0.10, 0.16]
 
 
 def _make_lr_split_pattern(*, width: int = 400, height: int = 400) -> np.ndarray:
@@ -353,6 +355,81 @@ def _make_alpha_luma_matrix_pattern(
 
     return arr
 
+
+def _make_isoeff_triplet_pattern(
+    *,
+    width: int = 400,
+    height: int = 400,
+    alpha_values: list[int] | None = None,
+    effective_levels: list[float] | None = None,
+) -> tuple[np.ndarray, list[dict[str, object]]]:
+    """alphaごとにlumaを逆算し、effective一定帯を3段で観測する。"""
+    alphas = ISOEFF_ALPHA_VALUES if alpha_values is None else alpha_values
+    levels = ISOEFF_EFFECTIVE_LEVELS if effective_levels is None else effective_levels
+    if not alphas:
+        raise ValueError("alpha_values must not be empty")
+    if not levels:
+        raise ValueError("effective_levels must not be empty")
+
+    arr = np.zeros((height, width, 4), dtype=np.uint16)
+    arr[:, :, :3] = 1024
+    arr[:, :, 3] = 65535
+
+    y_margin = max(8, height // 20)
+    x_margin = max(8, width // 30)
+    y0_base = y_margin
+    y1_base = height - y_margin
+    x0_base = x_margin
+    x1_base = width - x_margin
+
+    rows = len(levels)
+    cols = len(alphas)
+    spec_rows: list[dict[str, object]] = []
+
+    for r, eff in enumerate(levels):
+        y0 = y0_base + (r * (y1_base - y0_base)) // rows
+        y1 = y0_base + ((r + 1) * (y1_base - y0_base)) // rows
+
+        row_cells: list[dict[str, float]] = []
+        for c, a8 in enumerate(alphas):
+            x0 = x0_base + (c * (x1_base - x0_base)) // cols
+            x1 = x0_base + ((c + 1) * (x1_base - x0_base)) // cols
+
+            a_norm = max(1 / 255, min(1.0, a8 / 255))
+            luma_norm = min(1.0, eff / a_norm)
+            l16 = int(round(luma_norm * 65535))
+            a16 = int(round(a8 * 257))
+
+            arr[y0:y1, x0:x1, 0] = l16
+            arr[y0:y1, x0:x1, 1] = l16
+            arr[y0:y1, x0:x1, 2] = l16
+            arr[y0:y1, x0:x1, 3] = a16
+
+            row_cells.append(
+                {
+                    "alpha_8bit": int(a8),
+                    "alpha_norm": a_norm,
+                    "luma_16bit": int(l16),
+                    "luma_norm": luma_norm,
+                    "effective": a_norm * luma_norm,
+                }
+            )
+
+        spec_rows.append({"target_effective": float(eff), "cells": row_cells})
+
+    for c in range(1, cols):
+        x = x0_base + (c * (x1_base - x0_base)) // cols
+        arr[y0_base:y1_base, max(0, x - 1) : min(width, x + 1), :3] = 0
+        arr[y0_base:y1_base, max(0, x - 1) : min(width, x + 1), 3] = 65535
+
+    for r in range(1, rows):
+        y = y0_base + (r * (y1_base - y0_base)) // rows
+        arr[max(0, y - 1) : min(height, y + 1), x0_base:x1_base, :3] = 0
+        arr[max(0, y - 1) : min(height, y + 1), x0_base:x1_base, 3] = 65535
+
+    return arr, spec_rows
+
+
 def build_candidates(
     input_path: Path,
     success_ref: Path,
@@ -442,6 +519,7 @@ def build_candidates(
         arr16_luma_ladder_alpha255 = _make_luma_ladder_pattern(width=400, height=400, alpha_8bit=255)
         arr16_luma_ladder_alpha64 = _make_luma_ladder_pattern(width=400, height=400, alpha_8bit=64)
         arr16_alpha_luma_matrix = _make_alpha_luma_matrix_pattern(width=400, height=400)
+        arr16_isoeff_triplet, isoeff_spec_rows = _make_isoeff_triplet_pattern(width=400, height=400)
 
         targets.extend(
             [
@@ -537,6 +615,14 @@ def build_candidates(
                     "probe_alpha_luma_matrix",
                     outdir / "candidate_probe_alpha_luma_matrix.png",
                     arr16_alpha_luma_matrix,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
+                    "probe_isoeff_triplet",
+                    outdir / "candidate_probe_isoeff_triplet.png",
+                    arr16_isoeff_triplet,
                     16,
                     6,
                     icc_success,
@@ -679,6 +765,36 @@ def build_candidates(
         )
         (outdir / "alpha_luma_matrix_spec.md").write_text("\n".join(matrix_lines), encoding="utf-8")
 
+        isoeff_lines = [
+            "# Iso-effective Triplet Spec (auto-generated)",
+            "",
+            "`candidate_probe_isoeff_triplet.png` は列方向にalphaを変えつつ、",
+            "各行帯で `effective=(alpha/255)*(luma/65535)` の目標値を固定したプローブです。",
+            "",
+            "期待される見え方:",
+            "- もし積モデルが優勢なら、各行帯は列方向にほぼ均一な見え方になる",
+            "- 逆にalpha固有の非線形要因が強い場合、同一行でも左右で見え方が崩れる",
+            "",
+        ]
+        for row_idx, row in enumerate(isoeff_spec_rows, start=1):
+            target_eff = float(row["target_effective"])
+            isoeff_lines.extend(
+                [
+                    f"## Row {row_idx} (target effective={target_eff:.4f})",
+                    "",
+                    "| col | alpha_8bit | alpha_norm | luma_16bit | luma_norm | achieved_effective |",
+                    "|---:|---:|---:|---:|---:|---:|",
+                ]
+            )
+            for col_idx, cell in enumerate(row["cells"], start=1):
+                isoeff_lines.append(
+                    "| "
+                    f"{col_idx} | {cell['alpha_8bit']} | {cell['alpha_norm']:.4f} | "
+                    f"{cell['luma_16bit']} | {cell['luma_norm']:.4f} | {cell['effective']:.4f} |"
+                )
+            isoeff_lines.append("")
+        (outdir / "isoeff_triplet_spec.md").write_text("\n".join(isoeff_lines), encoding="utf-8")
+
     return results
 
 
@@ -720,6 +836,7 @@ def write_report(results: list[CandidateResult], path: Path, *, extended: bool) 
                 "- `probe_alpha_ladder_1_255`: alpha段階(1..255)の縦バーで発光しきい値の概算を1枚で観測",
                 "- `probe_luma_ladder_alpha255` / `probe_luma_ladder_alpha64`: RGB段階バー（alpha固定）で実効輝度しきい値を探索",
                 "- `probe_alpha_luma_matrix`: 2Dグリッド（x=alpha, y=luma）でしきい値境界形状を1枚で観測",
+                "- `probe_isoeff_triplet`: 3行帯で目標effectiveを固定し、列方向alpha変化に対する均一性を検証",
                 "- `probe_size_512`: 512化のみ（従来観測の再確認）",
                 "- `probe_size_512_nontransparent`: 512 + alpha=255固定（サイズ要因と透明要因の切り分け）",
                 "- `probe_size_512_alpha255_bright_patch`: 512 + alpha=255 + 右側高輝度パッチ（実効輝度しきい値を確認）",
