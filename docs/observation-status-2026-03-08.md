@@ -120,6 +120,20 @@
 - `candidate_probe_size_512.png` (probe_size_512 / family=size / observed=whiteout / url=TODO)
 - `candidate_probe_cicp_bt2020_pq_matrix_1.png` (probe_cicp_bt2020_pq_matrix_1 / family=cicp / observed=todo / url=TODO)
 
+### 1c) ターゲット追試パック（観測トリガー連動）
+
+既存観測の結果から、優先して切り分けたい小規模パックを抽出。
+
+- `alpha_gradient_orientation_followup`: `probe_alpha_gradient` が mixed のため、向き変更(RL/TB)でalpha依存と位置バイアスを切り分ける
+  - `candidate_probe_alpha_gradient_rl.png` (probe_alpha_gradient_rl / observed=todo / url=TODO)
+  - `candidate_probe_alpha_gradient_tb.png` (probe_alpha_gradient_tb / observed=todo / url=TODO)
+- `size_512_brightness_recovery_followup`: `probe_size_512` と `probe_size_512_nontransparent` が非決定結果のため、bright patch条件で輝度不足由来かを検証する
+  - `candidate_probe_size_512_alpha255_bright_patch.png` (probe_size_512_alpha255_bright_patch / observed=todo / url=TODO)
+- `alpha_floor_threshold_followup`: 低alpha(0/1)が非決定結果のため、16/64と左右同時比較で可視しきい値帯を絞り込む
+  - `candidate_probe_alpha_16.png` (probe_alpha_16 / observed=todo / url=TODO)
+  - `candidate_probe_alpha_64.png` (probe_alpha_64 / observed=todo / url=TODO)
+  - `candidate_probe_alpha_lr_split_16_64.png` (probe_alpha_lr_split_16_64 / observed=todo / url=TODO)
+
 ### 2) cicp比較メモ
 
 以下のcicp候補を同一端末・同一表示条件で連続投稿し、差分だけを比較する:

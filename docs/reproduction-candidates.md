@@ -1,6 +1,6 @@
-# success_sample.png 再現候補の生成手順（第19版）
+# success_sample.png 再現候補の生成手順（第20版）
 
-更新日: 2026-03-08 (v19: alpha_gradientの向き差分プローブを追加)
+更新日: 2026-03-08 (v20: 投稿チェックリスト自動生成を追加)
 
 ## 目的
 
@@ -125,6 +125,10 @@ python3 scripts/check_human_observations.py \
   - `--batch-size N` で次バッチ候補の件数を調整可能
   - `--batch-family-cap N` で次バッチ内の同一family件数を上限Nに抑制可能（0は無制限）
   - `--strict-conflict` で再現性衝突をCI失敗扱いにできる
+- 2026-03-08 v20 追加:
+  - `--post-checklist-out docs/posting-checklist-YYYY-MM-DD.md` を追加し、X投稿時の記録チェックリストを自動生成
+  - `--checklist-batch-mode (priority|diversified|cicp)` でチェックリストの候補選定を切替
+  - 出力チェックリストには controls（glow/not_glow）と結果記入欄（observed/url/notes）を同梱
 - 2026-03-08 v19 追加:
   - `candidate_probe_alpha_gradient_rl.png`（右→左alphaグラデーション）を追加
   - `candidate_probe_alpha_gradient_tb.png`（上→下alphaグラデーション）を追加
@@ -136,6 +140,8 @@ python3 scripts/check_human_observations.py \
   --generated-dir generated \
   --report-out docs/observation-status-2026-03-08.md \
   --report-json-out docs/observation-status-2026-03-08.json \
+  --post-checklist-out docs/posting-checklist-2026-03-08.md \
+  --checklist-batch-mode diversified \
   --batch-size 10 \
   --batch-family-cap 2
 ```

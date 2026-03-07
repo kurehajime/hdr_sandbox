@@ -108,6 +108,8 @@ python3 scripts/check_human_observations.py \
   --generated-dir generated \
   --report-out docs/observation-status-YYYY-MM-DD.md \
   --report-json-out docs/observation-status-YYYY-MM-DD.json \
+  --post-checklist-out docs/posting-checklist-YYYY-MM-DD.md \
+  --checklist-batch-mode diversified \
   --batch-size 10 \
   --batch-family-cap 2
 ```
@@ -119,6 +121,9 @@ python3 scripts/check_human_observations.py \
 - `observation_files`: チェック時に読み込んだ観測ファイル一覧（複数ファイル運用の確認用）
 - `family_progress_latest`: candidate最新状態を family 別に集計（resolved/uncertain/todo_or_url_todo/completion）
 - `--report-json-out`: pending/retry/conflict/推奨バッチをJSONで出力（自動投稿フロー連携用）
+- `--post-checklist-out`: 人間がX投稿時にそのまま埋められるチェックリストMarkdownを出力
+  - controls（glow/not_glow）+ 次バッチ候補 + 実投稿結果記入欄を同梱
+  - `--checklist-batch-mode` で候補選定モードを切替（`priority` / `diversified` / `cicp`）
 - レポートの `Suggested immediate batch` で、
   - 端末状態確認用コントロール（glow / not_glow）
   - 状態優先（未観測todo → 再試行whiteout/blackout/mixed → URL補完）+ 系統優先つきの次バッチ候補（`--batch-size`件）

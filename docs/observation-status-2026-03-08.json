@@ -446,6 +446,68 @@
         "family": "cicp"
       }
     ],
+    "targeted_followups": [
+      {
+        "name": "alpha_gradient_orientation_followup",
+        "reason": "`probe_alpha_gradient` が mixed のため、向き変更(RL/TB)でalpha依存と位置バイアスを切り分ける",
+        "items": [
+          {
+            "candidate": "probe_alpha_gradient_rl",
+            "file": "candidate_probe_alpha_gradient_rl.png",
+            "observed": "todo",
+            "x_post_url": "TODO",
+            "family": "alpha"
+          },
+          {
+            "candidate": "probe_alpha_gradient_tb",
+            "file": "candidate_probe_alpha_gradient_tb.png",
+            "observed": "todo",
+            "x_post_url": "TODO",
+            "family": "alpha"
+          }
+        ]
+      },
+      {
+        "name": "size_512_brightness_recovery_followup",
+        "reason": "`probe_size_512` と `probe_size_512_nontransparent` が非決定結果のため、bright patch条件で輝度不足由来かを検証する",
+        "items": [
+          {
+            "candidate": "probe_size_512_alpha255_bright_patch",
+            "file": "candidate_probe_size_512_alpha255_bright_patch.png",
+            "observed": "todo",
+            "x_post_url": "TODO",
+            "family": "size"
+          }
+        ]
+      },
+      {
+        "name": "alpha_floor_threshold_followup",
+        "reason": "低alpha(0/1)が非決定結果のため、16/64と左右同時比較で可視しきい値帯を絞り込む",
+        "items": [
+          {
+            "candidate": "probe_alpha_16",
+            "file": "candidate_probe_alpha_16.png",
+            "observed": "todo",
+            "x_post_url": "TODO",
+            "family": "alpha"
+          },
+          {
+            "candidate": "probe_alpha_64",
+            "file": "candidate_probe_alpha_64.png",
+            "observed": "todo",
+            "x_post_url": "TODO",
+            "family": "alpha"
+          },
+          {
+            "candidate": "probe_alpha_lr_split_16_64",
+            "file": "candidate_probe_alpha_lr_split_16_64.png",
+            "observed": "todo",
+            "x_post_url": "TODO",
+            "family": "alpha"
+          }
+        ]
+      }
+    ],
     "cicp_focus": [
       {
         "candidate": "probe_cicp_bt2020_pq",

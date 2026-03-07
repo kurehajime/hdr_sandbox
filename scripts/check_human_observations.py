@@ -270,6 +270,83 @@ def build_diversified_batch(
     return out
 
 
+def build_targeted_followups(
+    per_candidate: dict[str, dict[str, object]],
+    pending_rows: list[dict[str, str]],
+) -> list[dict[str, object]]:
+    """観測結果に応じた小規模フォローアップ実験パックを提案する。"""
+
+    pending_by_candidate = {r["candidate"]: r for r in pending_rows}
+    packs: list[dict[str, object]] = []
+
+    gradient = per_candidate.get("probe_alpha_gradient")
+    if gradient and gradient.get("latest_observed") == "mixed":
+        items = [
+            pending_by_candidate[name]
+            for name in ["probe_alpha_gradient_rl", "probe_alpha_gradient_tb"]
+            if name in pending_by_candidate
+        ]
+        if items:
+            packs.append(
+                {
+                    "name": "alpha_gradient_orientation_followup",
+                    "reason": (
+                        "`probe_alpha_gradient` が mixed のため、向き変更(RL/TB)で"
+                        "alpha依存と位置バイアスを切り分ける"
+                    ),
+                    "items": items,
+                }
+            )
+
+    size_512 = per_candidate.get("probe_size_512")
+    size_512_nontransparent = per_candidate.get("probe_size_512_nontransparent")
+    if (
+        size_512
+        and size_512_nontransparent
+        and size_512.get("latest_observed") in NON_DECISIVE_OBSERVED
+        and size_512_nontransparent.get("latest_observed") in NON_DECISIVE_OBSERVED
+    ):
+        bright_patch = pending_by_candidate.get("probe_size_512_alpha255_bright_patch")
+        if bright_patch:
+            packs.append(
+                {
+                    "name": "size_512_brightness_recovery_followup",
+                    "reason": (
+                        "`probe_size_512` と `probe_size_512_nontransparent` が非決定結果"
+                        "のため、bright patch条件で輝度不足由来かを検証する"
+                    ),
+                    "items": [bright_patch],
+                }
+            )
+
+    alpha_0 = per_candidate.get("probe_alpha_0")
+    alpha_1 = per_candidate.get("probe_alpha_1")
+    if (
+        alpha_0
+        and alpha_1
+        and alpha_0.get("latest_observed") in NON_DECISIVE_OBSERVED
+        and alpha_1.get("latest_observed") in NON_DECISIVE_OBSERVED
+    ):
+        items = [
+            pending_by_candidate[name]
+            for name in ["probe_alpha_16", "probe_alpha_64", "probe_alpha_lr_split_16_64"]
+            if name in pending_by_candidate
+        ]
+        if items:
+            packs.append(
+                {
+                    "name": "alpha_floor_threshold_followup",
+                    "reason": (
+                        "低alpha(0/1)が非決定結果のため、16/64と左右同時比較で"
+                        "可視しきい値帯を絞り込む"
+                    ),
+                    "items": items,
+                }
+            )
+
+    return packs
+
+
 def summarize_family_progress(
     per_candidate: dict[str, dict[str, object]],
 ) -> list[dict[str, object]]:
@@ -345,6 +422,7 @@ def build_structured_report(
         family_cap=batch_family_cap,
     )
     diversified_batch = build_diversified_batch(pending_rows, batch_size=batch_size)
+    targeted_followups = build_targeted_followups(per_candidate, pending_rows)
 
     glow_control = pick_control(
         per_candidate,
@@ -403,6 +481,14 @@ def build_structured_report(
             "priority": [simplify_row(r) for r in capped_priority_batch],
             "priority_family_cap": batch_family_cap,
             "diversified_round_robin": [simplify_row(r) for r in diversified_batch],
+            "targeted_followups": [
+                {
+                    "name": str(pack["name"]),
+                    "reason": str(pack["reason"]),
+                    "items": [simplify_row(r) for r in pack["items"]],
+                }
+                for pack in targeted_followups
+            ],
             "cicp_focus": [
                 simplify_row(r)
                 for r in ordered_pending
@@ -411,6 +497,96 @@ def build_structured_report(
         },
         "missing_candidates": sorted(missing_in_table),
     }
+
+
+def build_post_checklist(
+    *,
+    per_candidate: dict[str, dict[str, object]],
+    pending_rows: list[dict[str, str]],
+    batch_size: int,
+    batch_family_cap: int,
+    mode: str,
+) -> str:
+    ordered_pending = order_pending_rows(pending_rows)
+    priority_batch = apply_family_cap(
+        ordered_pending,
+        batch_size=batch_size,
+        family_cap=batch_family_cap,
+    )
+    diversified_batch = build_diversified_batch(pending_rows, batch_size=batch_size)
+    cicp_focus = [
+        r
+        for r in ordered_pending
+        if infer_family(r["candidate"]) == "cicp"
+    ][:batch_size]
+
+    if mode == "priority":
+        batch_rows = priority_batch
+        mode_label = "priority"
+    elif mode == "diversified":
+        batch_rows = diversified_batch
+        mode_label = "diversified_round_robin"
+    else:
+        batch_rows = cicp_focus
+        mode_label = "cicp_focus"
+
+    glow_control = pick_control(
+        per_candidate,
+        preferred=["success_like", "fail_rgb_no_alpha", "fail_8bit"],
+        target_observed="glows",
+    )
+    not_glow_control = pick_control(
+        per_candidate,
+        preferred=["fail_no_iccp"],
+        target_observed="not_glows",
+    )
+
+    lines: list[str] = []
+    lines.append("# X Posting Checklist")
+    lines.append("")
+    lines.append(f"- checklist_mode: {mode_label}")
+    lines.append(f"- batch_size: {batch_size}")
+    lines.append(f"- batch_family_cap: {batch_family_cap}")
+    lines.append("")
+
+    lines.append("## 0) Controls")
+    lines.append("")
+    lines.append("| role | candidate | file | expected | result_observed | x_post_url | notes |")
+    lines.append("|---|---|---|---|---|---|---|")
+    if glow_control:
+        lines.append(
+            f"| glow | `{glow_control['candidate']}` | `{glow_control['file']}` | glows | TODO | TODO | latest={glow_control['latest_observed']} |"
+        )
+    if not_glow_control:
+        lines.append(
+            f"| not_glow | `{not_glow_control['candidate']}` | `{not_glow_control['file']}` | not_glows | TODO | TODO | latest={not_glow_control['latest_observed']} |"
+        )
+    if not glow_control and not not_glow_control:
+        lines.append("| control_missing | - | - | - | TODO | TODO | suitable controls not found |")
+    lines.append("")
+
+    lines.append("## 1) Batch candidates")
+    lines.append("")
+    lines.append("| order | family | candidate | file | current_observed | current_url | result_observed | x_post_url | notes |")
+    lines.append("|---:|---|---|---|---|---|---|---|---|")
+    if batch_rows:
+        for idx, row in enumerate(batch_rows, start=1):
+            family = infer_family(row["candidate"])
+            lines.append(
+                f"| {idx} | `{family}` | `{row['candidate']}` | `{row['file']}` | `{row['observed']}` | {row['x_post_url']} | TODO | TODO | TODO |"
+            )
+    else:
+        lines.append("| 1 | - | - | - | - | - | TODO | TODO | pending candidate not found |")
+    lines.append("")
+
+    lines.append("## 2) Post-run notes")
+    lines.append("")
+    lines.append("- controls_passed: TODO")
+    lines.append("- environment_notes: TODO")
+    lines.append("- follow_up_action: TODO")
+    lines.append("")
+
+    return "\n".join(lines)
 
 
 def build_report(
@@ -431,6 +607,7 @@ def build_report(
         family_cap=batch_family_cap,
     )
     diversified_batch = build_diversified_batch(pending_rows, batch_size=batch_size)
+    targeted_followups = build_targeted_followups(per_candidate, pending_rows)
 
     by_family: dict[str, list[dict[str, str]]] = defaultdict(list)
     for r in ordered_pending:
@@ -572,6 +749,19 @@ def build_report(
             )
         lines.append("")
 
+    if targeted_followups:
+        lines.append("### 1c) ターゲット追試パック（観測トリガー連動）")
+        lines.append("")
+        lines.append("既存観測の結果から、優先して切り分けたい小規模パックを抽出。")
+        lines.append("")
+        for pack in targeted_followups:
+            lines.append(f"- `{pack['name']}`: {pack['reason']}")
+            for r in pack["items"]:
+                lines.append(
+                    f"  - `{r['file']}` ({r['candidate']} / observed={r['observed']} / url={r['x_post_url']})"
+                )
+        lines.append("")
+
     cicp = [r for r in ordered_pending if infer_family(r["candidate"]) == "cicp"]
     if cicp:
         lines.append("### 2) cicp比較メモ")
@@ -620,6 +810,16 @@ def main() -> None:
     ap.add_argument(
         "--report-json-out",
         help="機械処理向けのJSONレポート出力先（投稿自動化/集計連携用）",
+    )
+    ap.add_argument(
+        "--post-checklist-out",
+        help="X投稿用チェックリストのMarkdown出力先（手動投稿・記録補助）",
+    )
+    ap.add_argument(
+        "--checklist-batch-mode",
+        choices=["priority", "diversified", "cicp"],
+        default="priority",
+        help="post-checklistに採用する候補セット（priority/diversified/cicp）",
     )
     ap.add_argument("--batch-size", type=int, default=8, help="レポート内の次バッチ候補の最大件数")
     ap.add_argument(
@@ -794,6 +994,19 @@ def main() -> None:
             encoding="utf-8",
         )
         print(f"report_json_written: {out_json}")
+
+    if args.post_checklist_out:
+        checklist = build_post_checklist(
+            per_candidate=per_candidate,
+            pending_rows=pending_rows,
+            batch_size=args.batch_size,
+            batch_family_cap=args.batch_family_cap,
+            mode=args.checklist_batch_mode,
+        )
+        out_checklist = Path(args.post_checklist_out)
+        out_checklist.parent.mkdir(parents=True, exist_ok=True)
+        out_checklist.write_text(checklist, encoding="utf-8")
+        print(f"post_checklist_written: {out_checklist}")
 
     if bad_observed or missing_files:
         raise SystemExit(2)
