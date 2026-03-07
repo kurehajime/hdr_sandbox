@@ -12,6 +12,7 @@ from pathlib import Path
 VALID_OBSERVED = {"glows", "not_glows", "whiteout", "blackout", "mixed", "todo"}
 DECISIVE_OBSERVED = {"glows", "not_glows", "mixed"}
 NON_DECISIVE_OBSERVED = {"whiteout", "blackout"}
+FAMILY_PRIORITY = ["cicp", "threshold", "isoeff", "alpha", "luma", "size", "probe_other", "success", "fail", "other"]
 
 
 def parse_rows(md: str) -> list[dict[str, str]]:
@@ -61,6 +62,14 @@ def infer_family(candidate: str) -> str:
     return "other"
 
 
+def family_rank(candidate: str) -> int:
+    family = infer_family(candidate)
+    try:
+        return FAMILY_PRIORITY.index(family)
+    except ValueError:
+        return len(FAMILY_PRIORITY)
+
+
 def generated_candidates(gen_dir: Path) -> set[str]:
     names: set[str] = set()
     for p in gen_dir.glob("candidate_*.png"):
@@ -104,6 +113,34 @@ def summarize_candidates(rows: list[dict[str, str]]) -> dict[str, dict[str, obje
     return summary
 
 
+def pick_control(
+    per_candidate: dict[str, dict[str, object]],
+    preferred: list[str],
+    target_observed: str,
+) -> dict[str, object] | None:
+    for name in preferred:
+        entry = per_candidate.get(name)
+        if entry and entry.get("latest_observed") == target_observed:
+            return entry
+
+    matched = [
+        e for e in per_candidate.values() if e.get("latest_observed") == target_observed
+    ]
+    if not matched:
+        return None
+
+    # 再現性高めの候補を優先（試行回数の多いもの）。
+    matched.sort(key=lambda x: (-int(x.get("attempts", 0)), str(x.get("candidate", ""))))
+    return matched[0]
+
+
+def order_pending_rows(pending_rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    return sorted(
+        pending_rows,
+        key=lambda r: (family_rank(r["candidate"]), r["candidate"]),
+    )
+
+
 def build_report(
     rows: list[dict[str, str]],
     pending_rows: list[dict[str, str]],
@@ -111,10 +148,24 @@ def build_report(
     per_candidate: dict[str, dict[str, object]],
     conflicts: list[dict[str, object]],
     retry_candidates: list[dict[str, object]],
+    batch_size: int,
 ) -> str:
+    ordered_pending = order_pending_rows(pending_rows)
+
     by_family: dict[str, list[dict[str, str]]] = defaultdict(list)
-    for r in pending_rows:
+    for r in ordered_pending:
         by_family[infer_family(r["candidate"])].append(r)
+
+    glow_control = pick_control(
+        per_candidate,
+        preferred=["success_like", "fail_rgb_no_alpha", "fail_8bit"],
+        target_observed="glows",
+    )
+    not_glow_control = pick_control(
+        per_candidate,
+        preferred=["fail_no_iccp"],
+        target_observed="not_glows",
+    )
 
     lines: list[str] = []
     lines.append("# Human Observation Status Report")
@@ -159,7 +210,9 @@ def build_report(
         lines.append("")
         lines.append("優先順の目安: cicp → threshold/isoeff → alpha/luma → その他")
         lines.append("")
-        for family in sorted(by_family.keys(), key=lambda k: (k != "cicp", k)):
+        for family in FAMILY_PRIORITY:
+            if family not in by_family:
+                continue
             lines.append(f"### {family}")
             lines.append("")
             lines.append("| candidate | file | observed | x_post_url |")
@@ -179,18 +232,49 @@ def build_report(
 
     lines.append("## Suggested immediate batch")
     lines.append("")
-    cicp = [r for r in pending_rows if infer_family(r["candidate"]) == "cicp"]
+
+    if glow_control or not_glow_control:
+        lines.append("### 0) 端末状態確認用コントロール")
+        lines.append("")
+        if glow_control:
+            lines.append(
+                f"- glow control: `{glow_control['file']}` (`{glow_control['candidate']}` / latest={glow_control['latest_observed']})"
+            )
+        if not_glow_control:
+            lines.append(
+                f"- not_glow control: `{not_glow_control['file']}` (`{not_glow_control['candidate']}` / latest={not_glow_control['latest_observed']})"
+            )
+        lines.append("")
+
+    lines.append(f"### 1) 次バッチ候補（最大 {batch_size} 件）")
+    lines.append("")
+    for r in ordered_pending[:batch_size]:
+        lines.append(
+            f"- `{r['file']}` ({r['candidate']} / observed={r['observed']} / url={r['x_post_url']})"
+        )
+    if not ordered_pending:
+        lines.append("- pending候補はありません")
+    lines.append("")
+
+    cicp = [r for r in ordered_pending if infer_family(r["candidate"]) == "cicp"]
     if cicp:
-        lines.append("以下の6条件(cicp)を同一端末・同一表示条件で連続投稿して比較する:")
+        lines.append("### 2) cicp比較メモ")
+        lines.append("")
+        lines.append("以下のcicp候補を同一端末・同一表示条件で連続投稿し、差分だけを比較する:")
         for r in cicp:
             lines.append(f"- `{r['file']}`")
     elif retry_candidates:
+        lines.append("### 2) 再試行優先メモ")
+        lines.append("")
         lines.append("cicp未観測がないため、次は再現性確認の再投稿を優先:")
         for r in retry_candidates[:6]:
             lines.append(f"- `{r['file']}` ({r['latest_observed']})")
     else:
+        lines.append("### 2) 次フェーズ")
+        lines.append("")
         lines.append("- cicp未観測候補はありません。次は threshold/isoeff 系を優先。")
     lines.append("")
+
     return "\n".join(lines)
 
 
@@ -199,6 +283,7 @@ def main() -> None:
     ap.add_argument("--observations", default="docs/human-observations.md")
     ap.add_argument("--generated-dir", default="generated")
     ap.add_argument("--report-out", help="未観測候補のMarkdownレポート出力先")
+    ap.add_argument("--batch-size", type=int, default=8, help="レポート内の次バッチ候補の最大件数")
     ap.add_argument(
         "--strict-pending",
         action="store_true",
@@ -210,6 +295,9 @@ def main() -> None:
         help="同一candidateの decisive 観測が衝突したら終了コード2を返す",
     )
     args = ap.parse_args()
+
+    if args.batch_size <= 0:
+        raise SystemExit("ERROR: --batch-size must be > 0")
 
     obs_path = Path(args.observations)
     gen_dir = Path(args.generated_dir)
@@ -269,7 +357,7 @@ def main() -> None:
     print(f"pending_rows: {len(pending_rows)}")
     if pending_rows:
         print("pending_candidates:")
-        for r in pending_rows:
+        for r in order_pending_rows(pending_rows):
             print(f"- {r['candidate']} ({r['observed']} / {r['x_post_url']})")
 
     print(f"conflicting_candidates: {len(conflicts)}")
@@ -302,7 +390,15 @@ def main() -> None:
             print(f"- {f}")
 
     if args.report_out:
-        report = build_report(rows, pending_rows, missing_in_table, per_candidate, conflicts, retry_candidates)
+        report = build_report(
+            rows,
+            pending_rows,
+            missing_in_table,
+            per_candidate,
+            conflicts,
+            retry_candidates,
+            batch_size=args.batch_size,
+        )
         out = Path(args.report_out)
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(report, encoding="utf-8")

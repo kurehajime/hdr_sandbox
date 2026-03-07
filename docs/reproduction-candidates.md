@@ -1,6 +1,6 @@
-# success_sample.png 再現候補の生成手順（第13版）
+# success_sample.png 再現候補の生成手順（第14版）
 
-更新日: 2026-03-08 (v13: 観測衝突/再試行候補の自動抽出を追加)
+更新日: 2026-03-08 (v14: 次バッチ提案にコントロール挿入 + 優先順/件数指定を追加)
 
 ## 目的
 
@@ -96,13 +96,19 @@ python3 scripts/check_human_observations.py \
   - `conflicting_candidates`（同一candidateの decisive 観測衝突）を検出
   - `retry_candidates`（最新が whiteout/blackout/mixed）を抽出
   - `--report-out docs/observation-status-YYYY-MM-DD.md` で次の投稿計画レポートを自動生成
+  - `Suggested immediate batch` に、
+    - glow / not_glow の端末状態確認コントロール
+    - 優先順（cicp → threshold/isoeff → alpha/luma → その他）での次バッチ候補
+    を自動挿入
+  - `--batch-size N` で次バッチ候補の件数を調整可能
   - `--strict-conflict` で再現性衝突をCI失敗扱いにできる
 
 ```bash
 python3 scripts/check_human_observations.py \
   --observations docs/human-observations.md \
   --generated-dir generated \
-  --report-out docs/observation-status-2026-03-08.md
+  --report-out docs/observation-status-2026-03-08.md \
+  --batch-size 10
 ```
 
 ### 基本4候補

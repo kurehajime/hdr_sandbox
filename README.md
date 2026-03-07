@@ -89,13 +89,18 @@ python3 scripts/check_human_observations.py \
 python3 scripts/check_human_observations.py \
   --observations docs/human-observations.md \
   --generated-dir generated \
-  --report-out docs/observation-status-YYYY-MM-DD.md
+  --report-out docs/observation-status-YYYY-MM-DD.md \
+  --batch-size 10
 ```
 
 - `pending_rows`: 未投稿またはURL未反映の候補数
 - `conflicting_candidates`: 同一candidateで `glows/not_glows/mixed` が衝突した候補数
 - `retry_candidates`: 最新観測が `whiteout/blackout/mixed` の再検証候補数
 - `missing_in_table`: generatedに存在するが観測表に未登録の候補数
+- レポートの `Suggested immediate batch` で、
+  - 端末状態確認用コントロール（glow / not_glow）
+  - 優先順つきの次バッチ候補（`--batch-size`件）
+  を自動提案
 - `--strict-pending` を付けると pending が1件でも終了コード2
 - `--strict-conflict` を付けると decisive観測の衝突が1件でも終了コード2
 

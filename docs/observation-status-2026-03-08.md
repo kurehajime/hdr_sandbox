@@ -28,11 +28,17 @@
 | candidate | file | observed | x_post_url |
 |---|---|---|---|
 | `probe_cicp_bt2020_pq` | `candidate_probe_cicp_bt2020_pq.png` | `todo` | TODO |
+| `probe_cicp_bt2020_pq_limited` | `candidate_probe_cicp_bt2020_pq_limited.png` | `todo` | TODO |
+| `probe_cicp_bt2020_pq_matrix_1` | `candidate_probe_cicp_bt2020_pq_matrix_1.png` | `todo` | TODO |
 | `probe_cicp_bt2020_srgb` | `candidate_probe_cicp_bt2020_srgb.png` | `todo` | TODO |
 | `probe_cicp_bt709_pq` | `candidate_probe_cicp_bt709_pq.png` | `todo` | TODO |
 | `probe_cicp_bt709_srgb` | `candidate_probe_cicp_bt709_srgb.png` | `todo` | TODO |
-| `probe_cicp_bt2020_pq_limited` | `candidate_probe_cicp_bt2020_pq_limited.png` | `todo` | TODO |
-| `probe_cicp_bt2020_pq_matrix_1` | `candidate_probe_cicp_bt2020_pq_matrix_1.png` | `todo` | TODO |
+
+### isoeff
+
+| candidate | file | observed | x_post_url |
+|---|---|---|---|
+| `probe_isoeff_triplet` | `candidate_probe_isoeff_triplet.png` | `todo` | TODO |
 
 ### alpha
 
@@ -42,15 +48,9 @@
 | `probe_alpha_1` | `candidate_probe_alpha_1.png` | `whiteout` | TODO |
 | `probe_alpha_16` | `candidate_probe_alpha_16.png` | `todo` | TODO |
 | `probe_alpha_64` | `candidate_probe_alpha_64.png` | `todo` | TODO |
-| `probe_alpha_lr_split_16_64` | `candidate_probe_alpha_lr_split_16_64.png` | `todo` | TODO |
 | `probe_alpha_ladder_1_255` | `candidate_probe_alpha_ladder_1_255.png` | `todo` | TODO |
+| `probe_alpha_lr_split_16_64` | `candidate_probe_alpha_lr_split_16_64.png` | `todo` | TODO |
 | `probe_alpha_luma_matrix` | `candidate_probe_alpha_luma_matrix.png` | `todo` | TODO |
-
-### isoeff
-
-| candidate | file | observed | x_post_url |
-|---|---|---|---|
-| `probe_isoeff_triplet` | `candidate_probe_isoeff_triplet.png` | `todo` | TODO |
 
 ### luma
 
@@ -64,15 +64,35 @@
 | candidate | file | observed | x_post_url |
 |---|---|---|---|
 | `probe_size_512` | `candidate_probe_size_512.png` | `whiteout` | TODO |
-| `probe_size_512_nontransparent` | `candidate_probe_size_512_nontransparent.png` | `blackout` | TODO |
 | `probe_size_512_alpha255_bright_patch` | `candidate_probe_size_512_alpha255_bright_patch.png` | `todo` | TODO |
+| `probe_size_512_nontransparent` | `candidate_probe_size_512_nontransparent.png` | `blackout` | TODO |
 
 ## Suggested immediate batch
 
-以下の6条件(cicp)を同一端末・同一表示条件で連続投稿して比較する:
+### 0) 端末状態確認用コントロール
+
+- glow control: `candidate_success_like.png` (`success_like` / latest=glows)
+- not_glow control: `candidate_fail_no_iccp.png` (`fail_no_iccp` / latest=not_glows)
+
+### 1) 次バッチ候補（最大 10 件）
+
+- `candidate_probe_cicp_bt2020_pq.png` (probe_cicp_bt2020_pq / observed=todo / url=TODO)
+- `candidate_probe_cicp_bt2020_pq_limited.png` (probe_cicp_bt2020_pq_limited / observed=todo / url=TODO)
+- `candidate_probe_cicp_bt2020_pq_matrix_1.png` (probe_cicp_bt2020_pq_matrix_1 / observed=todo / url=TODO)
+- `candidate_probe_cicp_bt2020_srgb.png` (probe_cicp_bt2020_srgb / observed=todo / url=TODO)
+- `candidate_probe_cicp_bt709_pq.png` (probe_cicp_bt709_pq / observed=todo / url=TODO)
+- `candidate_probe_cicp_bt709_srgb.png` (probe_cicp_bt709_srgb / observed=todo / url=TODO)
+- `candidate_probe_isoeff_triplet.png` (probe_isoeff_triplet / observed=todo / url=TODO)
+- `candidate_probe_alpha_0.png` (probe_alpha_0 / observed=whiteout / url=TODO)
+- `candidate_probe_alpha_1.png` (probe_alpha_1 / observed=whiteout / url=TODO)
+- `candidate_probe_alpha_16.png` (probe_alpha_16 / observed=todo / url=TODO)
+
+### 2) cicp比較メモ
+
+以下のcicp候補を同一端末・同一表示条件で連続投稿し、差分だけを比較する:
 - `candidate_probe_cicp_bt2020_pq.png`
+- `candidate_probe_cicp_bt2020_pq_limited.png`
+- `candidate_probe_cicp_bt2020_pq_matrix_1.png`
 - `candidate_probe_cicp_bt2020_srgb.png`
 - `candidate_probe_cicp_bt709_pq.png`
 - `candidate_probe_cicp_bt709_srgb.png`
-- `candidate_probe_cicp_bt2020_pq_limited.png`
-- `candidate_probe_cicp_bt2020_pq_matrix_1.png`
