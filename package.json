@@ -1,0 +1,10 @@
+{
+  "name": "hdr_sandbox",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "gen:jswasm": "node src/jswasm-pipeline/cli.mjs --success-ref sample/success_sample.png --outdir generated",
+    "gen": "node scripts/generate_candidates.mjs",
+    "precheck:post": "node scripts/posting_precheck.mjs"
+  }
+}

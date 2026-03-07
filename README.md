@@ -12,6 +12,42 @@ X向けHDR画像投稿の再現調査リポジトリ。
 
 詳細は `docs/success-case-IMG_0892.md` を参照。
 
+## JavaScript/WASM 実装フェーズ（最短実行）
+
+### 0) 依存
+
+```bash
+npm install
+```
+
+### 1) 最小生成パイプライン（JS/WASM）
+
+```bash
+npm run gen:jswasm
+```
+
+- 実装: `src/jswasm-pipeline/`
+- 出力: `generated/candidate_success_like.png`, `generated/candidate_fail_no_iccp.png`
+- WASMの `mulDiv255` が使えない場合は、自動でJS計算へフォールバック（同一CLIで継続）
+
+### 2) 生成コマンド（失敗時フォールバック付き）
+
+```bash
+npm run gen
+```
+
+- まず `src/jswasm-pipeline/cli.mjs` を実行
+- 失敗時は `scripts/make_candidates.py --extended` に自動フォールバック
+
+### 3) 投稿前チェック（1コマンド）
+
+```bash
+npm run precheck:post
+```
+
+- `check_png_hdr.py` と `check_human_observations.py` を順に実行
+- 途中で失敗した時点で終了コードを返す
+
 ## 検証スクリプト
 
 ### 1) PNGプロファイル確認
