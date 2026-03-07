@@ -197,6 +197,8 @@ MATRIX_ALPHA_VALUES = [1, 2, 4, 8, 16, 24, 32, 48, 64, 96, 128, 160, 192, 224, 2
 MATRIX_LUMA_VALUES = [512, 1024, 2048, 4096, 8192, 12288, 16384, 24576, 32768, 49152, 65535]
 ISOEFF_ALPHA_VALUES = [8, 12, 16, 24, 32, 48, 64, 96, 128, 160, 192, 224, 255]
 ISOEFF_EFFECTIVE_LEVELS = [0.06, 0.10, 0.16]
+THRESHOLD_ZOOM_ALPHA_VALUES = [12, 16, 20, 24, 28, 32, 40, 48, 56, 64, 80, 96]
+THRESHOLD_ZOOM_LUMA_VALUES = [4096, 6144, 8192, 10240, 12288, 14336, 16384, 20480, 24576, 28672, 32768, 40960]
 
 
 def _make_lr_split_pattern(*, width: int = 400, height: int = 400) -> np.ndarray:
@@ -430,6 +432,62 @@ def _make_isoeff_triplet_pattern(
     return arr, spec_rows
 
 
+def _make_threshold_zoom_matrix_pattern(
+    *,
+    width: int = 400,
+    height: int = 400,
+    alpha_values: list[int] | None = None,
+    luma_values: list[int] | None = None,
+) -> np.ndarray:
+    """しきい値近傍を高密度サンプリングする2Dマトリクス（x=alpha, y=luma）。"""
+    alphas = THRESHOLD_ZOOM_ALPHA_VALUES if alpha_values is None else alpha_values
+    lumas = THRESHOLD_ZOOM_LUMA_VALUES if luma_values is None else luma_values
+    if not alphas:
+        raise ValueError("alpha_values must not be empty")
+    if not lumas:
+        raise ValueError("luma_values must not be empty")
+
+    arr = np.zeros((height, width, 4), dtype=np.uint16)
+    arr[:, :, :3] = 1024
+    arr[:, :, 3] = 65535
+
+    mx = max(8, width // 40)
+    my = max(8, height // 40)
+    x0_base = mx
+    x1_base = width - mx
+    y0_base = my
+    y1_base = height - my
+
+    cols = len(alphas)
+    rows = len(lumas)
+
+    for r, l16 in enumerate(lumas):
+        y0 = y0_base + (r * (y1_base - y0_base)) // rows
+        y1 = y0_base + ((r + 1) * (y1_base - y0_base)) // rows
+        lv = np.uint16(max(0, min(65535, l16)))
+
+        for c, a8 in enumerate(alphas):
+            x0 = x0_base + (c * (x1_base - x0_base)) // cols
+            x1 = x0_base + ((c + 1) * (x1_base - x0_base)) // cols
+
+            arr[y0:y1, x0:x1, 0] = lv
+            arr[y0:y1, x0:x1, 1] = lv
+            arr[y0:y1, x0:x1, 2] = lv
+            arr[y0:y1, x0:x1, 3] = np.uint16(max(0, min(255, a8)) * 257)
+
+    for c in range(1, cols):
+        x = x0_base + (c * (x1_base - x0_base)) // cols
+        arr[y0_base:y1_base, max(0, x - 1) : min(width, x + 1), :3] = 0
+        arr[y0_base:y1_base, max(0, x - 1) : min(width, x + 1), 3] = 65535
+
+    for r in range(1, rows):
+        y = y0_base + (r * (y1_base - y0_base)) // rows
+        arr[max(0, y - 1) : min(height, y + 1), x0_base:x1_base, :3] = 0
+        arr[max(0, y - 1) : min(height, y + 1), x0_base:x1_base, 3] = 65535
+
+    return arr
+
+
 def build_candidates(
     input_path: Path,
     success_ref: Path,
@@ -520,6 +578,7 @@ def build_candidates(
         arr16_luma_ladder_alpha64 = _make_luma_ladder_pattern(width=400, height=400, alpha_8bit=64)
         arr16_alpha_luma_matrix = _make_alpha_luma_matrix_pattern(width=400, height=400)
         arr16_isoeff_triplet, isoeff_spec_rows = _make_isoeff_triplet_pattern(width=400, height=400)
+        arr16_threshold_zoom_matrix = _make_threshold_zoom_matrix_pattern(width=400, height=400)
 
         targets.extend(
             [
@@ -623,6 +682,14 @@ def build_candidates(
                     "probe_isoeff_triplet",
                     outdir / "candidate_probe_isoeff_triplet.png",
                     arr16_isoeff_triplet,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
+                    "probe_threshold_zoom_matrix",
+                    outdir / "candidate_probe_threshold_zoom_matrix.png",
+                    arr16_threshold_zoom_matrix,
                     16,
                     6,
                     icc_success,
@@ -795,6 +862,47 @@ def build_candidates(
             isoeff_lines.append("")
         (outdir / "isoeff_triplet_spec.md").write_text("\n".join(isoeff_lines), encoding="utf-8")
 
+        threshold_lines = [
+            "# Threshold Zoom Matrix Spec (auto-generated)",
+            "",
+            "`candidate_probe_threshold_zoom_matrix.png` は、",
+            "既存観測（alphaラダーで概ね alpha≈24 付近から変化）を踏まえ、",
+            "しきい値近傍を高密度サンプリングする2Dマトリクスです。",
+            "",
+            "- 列(x): alpha(8bit) = 12..96 の密サンプル",
+            "- 行(y): RGB luma(16bit) = 4096..40960 の密サンプル",
+            "",
+            "## Columns (x=alpha)",
+            "",
+            "| col | alpha_8bit | alpha_16bit | alpha_norm |",
+            "|---:|---:|---:|---:|",
+        ]
+        for i, a8 in enumerate(THRESHOLD_ZOOM_ALPHA_VALUES, start=1):
+            threshold_lines.append(f"| {i} | {a8} | {a8 * 257} | {a8 / 255:.4f} |")
+
+        threshold_lines.extend(
+            [
+                "",
+                "## Rows (y=luma)",
+                "",
+                "| row | luma_16bit | luma_norm |",
+                "|---:|---:|---:|",
+            ]
+        )
+        for i, l16 in enumerate(THRESHOLD_ZOOM_LUMA_VALUES, start=1):
+            threshold_lines.append(f"| {i} | {l16} | {l16 / 65535:.4f} |")
+
+        threshold_lines.extend(
+            [
+                "",
+                "## 観測ポイント",
+                "- 2D境界が緩やかな斜線になるか（積モデル優勢）",
+                "- alpha≈24 近傍で境界の折れ曲がりや段差が出るか（alpha固有非線形の兆候）",
+                "- 既存 `alpha_luma_matrix` より境界追跡の再現性が上がるか",
+            ]
+        )
+        (outdir / "threshold_zoom_matrix_spec.md").write_text("\n".join(threshold_lines), encoding="utf-8")
+
     return results
 
 
@@ -837,6 +945,7 @@ def write_report(results: list[CandidateResult], path: Path, *, extended: bool) 
                 "- `probe_luma_ladder_alpha255` / `probe_luma_ladder_alpha64`: RGB段階バー（alpha固定）で実効輝度しきい値を探索",
                 "- `probe_alpha_luma_matrix`: 2Dグリッド（x=alpha, y=luma）でしきい値境界形状を1枚で観測",
                 "- `probe_isoeff_triplet`: 3行帯で目標effectiveを固定し、列方向alpha変化に対する均一性を検証",
+                "- `probe_threshold_zoom_matrix`: alpha/lumaの境界近傍を高密度サンプリングし、境界線を細かく追跡",
                 "- `probe_size_512`: 512化のみ（従来観測の再確認）",
                 "- `probe_size_512_nontransparent`: 512 + alpha=255固定（サイズ要因と透明要因の切り分け）",
                 "- `probe_size_512_alpha255_bright_patch`: 512 + alpha=255 + 右側高輝度パッチ（実効輝度しきい値を確認）",
