@@ -22,7 +22,17 @@
 | probe_cicp_bt709_srgb | `candidate_probe_cicp_bt709_srgb.png` | todo | TODO | 新規: primaries+transfer同時変更 |
 | probe_cicp_bt2020_pq_limited | `candidate_probe_cicp_bt2020_pq_limited.png` | todo | TODO | 新規: rangeのみFull→Limitedに変更 |
 | probe_cicp_bt2020_pq_matrix_1 | `candidate_probe_cicp_bt2020_pq_matrix_1.png` | todo | TODO | 新規: matrixのみ0→1に変更 |
-| threshold_zoom_matrix | `candidate_probe_threshold_zoom_matrix.png` | todo | https://x.com/kurehajime/status/2030297528013554096 | 白より白く見える領域はなかった |
+| probe_alpha_16 | `candidate_probe_alpha_16.png` | todo | TODO | 未投稿: alpha固定16のしきい値確認 |
+| probe_alpha_64 | `candidate_probe_alpha_64.png` | todo | TODO | 未投稿: alpha固定64のしきい値確認 |
+| probe_alpha_lr_split_16_64 | `candidate_probe_alpha_lr_split_16_64.png` | todo | TODO | 未投稿: 同一画像でalpha16/64の左右比較 |
+| probe_alpha_ladder_1_255 | `candidate_probe_alpha_ladder_1_255.png` | todo | TODO | 未投稿: alpha段階ラダー（既投稿URLの再確認要） |
+| probe_luma_ladder_alpha255 | `candidate_probe_luma_ladder_alpha255.png` | todo | TODO | 未投稿: alpha255固定でlumaしきい値確認 |
+| probe_luma_ladder_alpha64 | `candidate_probe_luma_ladder_alpha64.png` | todo | TODO | 未投稿: alpha64固定でlumaしきい値確認 |
+| probe_alpha_luma_matrix | `candidate_probe_alpha_luma_matrix.png` | todo | TODO | 未投稿: alpha×luma 2D境界観測 |
+| probe_isoeff_triplet | `candidate_probe_isoeff_triplet.png` | todo | TODO | 未投稿: 等effective 3帯の均一性比較 |
+| probe_threshold_zoom_matrix | `candidate_probe_threshold_zoom_matrix.png` | not_glows | https://x.com/kurehajime/status/2030297528013554096 | 白より白く見える領域はなかった |
+| probe_size_512_alpha255_bright_patch | `candidate_probe_size_512_alpha255_bright_patch.png` | todo | TODO | 未投稿: 512黒化の輝度不足切り分け |
+
 ## observed 値の凡例
 
 - `glows`: 光って見える
@@ -30,6 +40,7 @@
 - `whiteout`: 真っ白で評価不能
 - `blackout`: 真っ黒で評価不能
 - `mixed`: 部分的に光る/条件依存
+- `todo`: 未投稿/未評価
 
 ## 追記ルール
 

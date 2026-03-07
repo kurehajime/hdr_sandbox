@@ -72,7 +72,7 @@ python3 scripts/make_candidates.py \
 - `generated/alpha_luma_matrix_spec.md`（2Dマトリクスの行列lane対応表）
 - `generated/isoeff_triplet_spec.md`（目標effective固定帯のlane対応表）
 - `generated/threshold_zoom_matrix_spec.md`（しきい値近傍マトリクスの行列lane対応表）
-- `generated/cicp_variant_spec.md`（cicp比較4条件の対応表）
+- `generated/cicp_variant_spec.md`（cicp比較6条件の対応表）
 - `generated/human_observations_template.md`（人間観測の追記テンプレート）
 
 ### 3) 人間観測ログの整合性チェック
@@ -82,6 +82,19 @@ python3 scripts/check_human_observations.py \
   --observations docs/human-observations.md \
   --generated-dir generated
 ```
+
+### 4) 未観測候補のレポート生成（次の投稿計画）
+
+```bash
+python3 scripts/check_human_observations.py \
+  --observations docs/human-observations.md \
+  --generated-dir generated \
+  --report-out docs/observation-status-YYYY-MM-DD.md
+```
+
+- `pending_rows`: 未投稿またはURL未反映の候補数
+- `missing_in_table`: generatedに存在するが観測表に未登録の候補数
+- `--strict-pending` を付けると pending が1件でも終了コード2
 
 詳細は `docs/reproduction-candidates.md` / `docs/human-observations.md` /
 `docs/hypothesis-update-2026-03-07.md` を参照。

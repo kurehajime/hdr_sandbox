@@ -1,6 +1,6 @@
-# success_sample.png 再現候補の生成手順（第11版）
+# success_sample.png 再現候補の生成手順（第12版）
 
-更新日: 2026-03-07 (v11: cicp variant比較を追加)
+更新日: 2026-03-08 (v12: 観測表の網羅チェックと未観測レポート生成を追加)
 
 ## 目的
 
@@ -91,6 +91,17 @@ python3 scripts/check_human_observations.py \
   --generated-dir generated
 ```
 
+- 2026-03-08 追加:
+  - `pending_rows`（未投稿/URL未反映）と `missing_in_table`（generatedに存在するが観測表未登録）を同時に検出
+  - `--report-out docs/observation-status-YYYY-MM-DD.md` で次の投稿計画レポートを自動生成
+
+```bash
+python3 scripts/check_human_observations.py \
+  --observations docs/human-observations.md \
+  --generated-dir generated \
+  --report-out docs/observation-status-2026-03-08.md
+```
+
 ### 基本4候補
 
 - `candidate_success_like`
@@ -140,6 +151,8 @@ python3 scripts/check_human_observations.py \
 
 新規追加プローブでは次を確認する:
 
+- 最優先: `cicp_variant` 6条件を同一端末・同一表示条件で連続投稿し、transfer/primaries/range/matrix寄与を分離
+  - 進捗確認は `docs/observation-status-2026-03-08.md` の pending セクションを参照
 - `alpha=16` と `alpha=64` の固定比較で、可視化しきい値の大まかな位置を推定
 - 左右分割（16/64）で同一画像内比較し、端末条件差の影響を減らす
 - `512 + alpha255 + 高輝度パッチ` で、512黒化が全体輝度不足由来かを切り分ける
