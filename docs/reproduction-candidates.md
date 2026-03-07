@@ -1,6 +1,6 @@
-# success_sample.png 再現候補の生成手順（第23版）
+# success_sample.png 再現候補の生成手順（第25版）
 
-更新日: 2026-03-08 (v23: 位置依存バイアス検証プローブを追加)
+更新日: 2026-03-08 (v25: x_post_url 帰属不整合チェックを追加)
 
 ## 目的
 
@@ -126,6 +126,9 @@ python3 scripts/check_human_observations.py \
   - `--batch-size N` で次バッチ候補の件数を調整可能
   - `--batch-family-cap N` で次バッチ内の同一family件数を上限Nに抑制可能（0は無制限）
   - `--strict-conflict` で再現性衝突をCI失敗扱いにできる
+  - `--strict-retry` で最新観測が `whiteout/blackout/mixed` の候補をCI失敗扱いにできる
+- 2026-03-08 v24 追加:
+  - `--strict-retry` を追加（非決定結果の残存をCIで即検出）
 - 2026-03-08 v23 追加:
   - `candidate_probe_position_quadrant_alpha64.png` を追加
   - `generated/position_quadrant_spec.md` を追加し、4象限同一条件で位置依存バイアスを直接比較可能化
@@ -159,6 +162,7 @@ python3 scripts/check_human_observations.py \
   --checklist-include-targeted-followups \
   --batch-size 10 \
   --batch-family-cap 2 \
+  --strict-retry \
   --strict-mapping
 ```
 

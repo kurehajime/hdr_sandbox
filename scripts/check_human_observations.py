@@ -428,6 +428,34 @@ def find_mapping_conflicts(
     return candidate_conflicts, file_conflicts
 
 
+def find_url_conflicts(rows: list[dict[str, str]]) -> list[dict[str, object]]:
+    """x_post_url が複数candidate/fileに跨って使われていないか検出する。"""
+    url_to_candidates: dict[str, set[str]] = defaultdict(set)
+    url_to_files: dict[str, set[str]] = defaultdict(set)
+
+    for r in rows:
+        url = r["x_post_url"].strip()
+        if not url or url.upper() == "TODO":
+            continue
+        url_to_candidates[url].add(r["candidate"])
+        url_to_files[url].add(r["file"])
+
+    conflicts = []
+    for url in sorted(url_to_candidates):
+        candidates = sorted(url_to_candidates[url])
+        files = sorted(url_to_files[url])
+        if len(candidates) >= 2 or len(files) >= 2:
+            conflicts.append(
+                {
+                    "x_post_url": url,
+                    "candidates": candidates,
+                    "files": files,
+                }
+            )
+
+    return conflicts
+
+
 def simplify_row(row: dict[str, object]) -> dict[str, object]:
     """出力向けにcandidate行の主要項目だけを抽出する。"""
     candidate = str(row.get("candidate", ""))
@@ -452,6 +480,7 @@ def build_structured_report(
     retry_candidates: list[dict[str, object]],
     mapping_conflicts_candidate: list[dict[str, object]],
     mapping_conflicts_file: list[dict[str, object]],
+    url_conflicts: list[dict[str, object]],
     batch_size: int,
     batch_family_cap: int,
 ) -> dict[str, object]:
@@ -486,6 +515,7 @@ def build_structured_report(
             "missing_in_table": len(missing_in_table),
             "mapping_conflicts_candidate": len(mapping_conflicts_candidate),
             "mapping_conflicts_file": len(mapping_conflicts_file),
+            "url_conflicts": len(url_conflicts),
         },
         "family_progress": [
             {
@@ -519,6 +549,7 @@ def build_structured_report(
             "candidate_to_files": mapping_conflicts_candidate,
             "file_to_candidates": mapping_conflicts_file,
         },
+        "url_conflicts": url_conflicts,
         "suggested_batches": {
             "controls": {
                 "glow": simplify_row(glow_control) if glow_control else None,
@@ -671,6 +702,7 @@ def build_report(
     retry_candidates: list[dict[str, object]],
     mapping_conflicts_candidate: list[dict[str, object]],
     mapping_conflicts_file: list[dict[str, object]],
+    url_conflicts: list[dict[str, object]],
     batch_size: int,
     batch_family_cap: int,
 ) -> str:
@@ -709,6 +741,7 @@ def build_report(
     lines.append(f"- missing_in_table: {len(missing_in_table)}")
     lines.append(f"- mapping_conflicts_candidate: {len(mapping_conflicts_candidate)}")
     lines.append(f"- mapping_conflicts_file: {len(mapping_conflicts_file)}")
+    lines.append(f"- url_conflicts: {len(url_conflicts)}")
     lines.append("")
 
     if family_progress:
@@ -774,6 +807,19 @@ def build_report(
         for ent in mapping_conflicts_file:
             candidates = ", ".join(f"`{c}`" for c in ent["candidates"])
             lines.append(f"| `{ent['file']}` | {candidates} |")
+        lines.append("")
+
+    if url_conflicts:
+        lines.append("## URL conflicts (x_post_url -> multiple candidates/files)")
+        lines.append("")
+        lines.append("同一URLが複数候補に紐づくと、投稿結果の帰属が曖昧になるため要修正。")
+        lines.append("")
+        lines.append("| x_post_url | candidates | files |")
+        lines.append("|---|---|---|")
+        for ent in url_conflicts:
+            candidates = ", ".join(f"`{c}`" for c in ent["candidates"])
+            files = ", ".join(f"`{f}`" for f in ent["files"])
+            lines.append(f"| {ent['x_post_url']} | {candidates} | {files} |")
         lines.append("")
 
     if pending_rows:
@@ -944,9 +990,19 @@ def main() -> None:
         help="同一candidateの decisive 観測が衝突したら終了コード2を返す",
     )
     ap.add_argument(
+        "--strict-retry",
+        action="store_true",
+        help="最新観測が whiteout/blackout/mixed の候補が1件でもあれば終了コード2を返す",
+    )
+    ap.add_argument(
         "--strict-mapping",
         action="store_true",
         help="candidate↔file 対応に不整合（1対多/多対1）があれば終了コード2を返す",
+    )
+    ap.add_argument(
+        "--strict-url-mapping",
+        action="store_true",
+        help="x_post_url が複数candidate/fileへ紐づく不整合があれば終了コード2を返す",
     )
     args = ap.parse_args()
 
@@ -1010,6 +1066,7 @@ def main() -> None:
         key=lambda x: str(x["candidate"]),
     )
     mapping_conflicts_candidate, mapping_conflicts_file = find_mapping_conflicts(rows)
+    url_conflicts = find_url_conflicts(rows)
 
     print(f"observation_files: {len(obs_paths)}")
     for p in obs_paths:
@@ -1072,6 +1129,14 @@ def main() -> None:
             candidates = ",".join(str(c) for c in ent["candidates"])
             print(f"- {ent['file']} ({candidates})")
 
+    print(f"url_conflicts: {len(url_conflicts)}")
+    if url_conflicts:
+        print("url_conflicts_list:")
+        for ent in url_conflicts:
+            candidates = ",".join(str(c) for c in ent["candidates"])
+            files = ",".join(str(f) for f in ent["files"])
+            print(f"- {ent['x_post_url']} (candidates={candidates} / files={files})")
+
     if bad_observed:
         print("invalid_observed:")
         for x in bad_observed:
@@ -1093,6 +1158,7 @@ def main() -> None:
             retry_candidates,
             mapping_conflicts_candidate,
             mapping_conflicts_file,
+            url_conflicts,
             batch_size=args.batch_size,
             batch_family_cap=args.batch_family_cap,
         )
@@ -1113,6 +1179,7 @@ def main() -> None:
             retry_candidates=retry_candidates,
             mapping_conflicts_candidate=mapping_conflicts_candidate,
             mapping_conflicts_file=mapping_conflicts_file,
+            url_conflicts=url_conflicts,
             batch_size=args.batch_size,
             batch_family_cap=args.batch_family_cap,
         )
@@ -1147,7 +1214,13 @@ def main() -> None:
     if args.strict_conflict and conflicts:
         raise SystemExit(2)
 
+    if args.strict_retry and retry_candidates:
+        raise SystemExit(2)
+
     if args.strict_mapping and (mapping_conflicts_candidate or mapping_conflicts_file):
+        raise SystemExit(2)
+
+    if args.strict_url_mapping and url_conflicts:
         raise SystemExit(2)
 
     print("OK")
