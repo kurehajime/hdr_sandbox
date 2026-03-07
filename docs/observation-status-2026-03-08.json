@@ -6,7 +6,7 @@
     "errors": []
   },
   "success": {
-    "file": "generated/candidate_success_like.png",
+    "file": "generated/jswasm/candidate_success_like.png",
     "exists": true,
     "ihdr": {
       "width": 400,
@@ -20,7 +20,7 @@
     "hasIcc": true
   },
   "failNoIcc": {
-    "file": "generated/candidate_fail_no_iccp.png",
+    "file": "generated/jswasm/candidate_fail_no_iccp.png",
     "exists": true,
     "ihdr": {
       "width": 400,
