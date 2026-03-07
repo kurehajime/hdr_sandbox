@@ -12,7 +12,8 @@
     "missing_in_table": 0,
     "mapping_conflicts_candidate": 0,
     "mapping_conflicts_file": 0,
-    "url_conflicts": 0
+    "url_conflicts": 0,
+    "duplicate_rows": 0
   },
   "family_progress": [
     {
@@ -307,6 +308,7 @@
     "file_to_candidates": []
   },
   "url_conflicts": [],
+  "duplicate_rows": [],
   "suggested_batches": {
     "controls": {
       "glow": {

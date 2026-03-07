@@ -9,6 +9,7 @@
 - mapping_conflicts_candidate: 0
 - mapping_conflicts_file: 0
 - url_conflicts: 0
+- duplicate_rows: 0
 
 ## Family progress (latest per candidate)
 

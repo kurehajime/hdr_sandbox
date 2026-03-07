@@ -19,9 +19,9 @@ FAMILY_PRIORITY = ["cicp", "threshold", "isoeff", "alpha", "position", "luma", "
 DEFAULT_EXTRA_OBSERVATIONS_GLOB = "human-observations-*.md"
 
 
-def parse_rows(md: str) -> list[dict[str, str]]:
-    rows: list[dict[str, str]] = []
-    for line in md.splitlines():
+def parse_rows(md: str, *, source_file: Path) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for line_no, line in enumerate(md.splitlines(), start=1):
         if not line.startswith("|"):
             continue
         cols = [c.strip() for c in line.strip().strip("|").split("|")]
@@ -39,6 +39,8 @@ def parse_rows(md: str) -> list[dict[str, str]]:
                 "observed": observed.strip().lower(),
                 "x_post_url": x_url.strip(),
                 "notes": notes,
+                "source_file": str(source_file),
+                "source_line": line_no,
             }
         )
     return rows
@@ -113,10 +115,10 @@ def resolve_observation_paths(
     return paths
 
 
-def load_rows(obs_paths: list[Path]) -> list[dict[str, str]]:
-    rows: list[dict[str, str]] = []
+def load_rows(obs_paths: list[Path]) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
     for p in obs_paths:
-        rows.extend(parse_rows(p.read_text(encoding="utf-8")))
+        rows.extend(parse_rows(p.read_text(encoding="utf-8"), source_file=p))
     return rows
 
 
@@ -456,6 +458,42 @@ def find_url_conflicts(rows: list[dict[str, str]]) -> list[dict[str, object]]:
     return conflicts
 
 
+def find_duplicate_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    """同一観測行の重複（主テーブル+extra 取り込み時の二重登録）を検出する。"""
+    grouped: dict[tuple[str, str, str, str], list[dict[str, object]]] = defaultdict(list)
+    for r in rows:
+        key = (
+            str(r["candidate"]),
+            str(r["file"]),
+            str(r["observed"]),
+            str(r["x_post_url"]),
+        )
+        grouped[key].append(r)
+
+    duplicates: list[dict[str, object]] = []
+    for (candidate, file_name, observed, x_post_url), rs in sorted(grouped.items()):
+        if len(rs) < 2:
+            continue
+        duplicates.append(
+            {
+                "candidate": candidate,
+                "file": file_name,
+                "observed": observed,
+                "x_post_url": x_post_url,
+                "count": len(rs),
+                "sources": [
+                    {
+                        "source_file": str(r.get("source_file", "")),
+                        "source_line": int(r.get("source_line", 0)),
+                    }
+                    for r in rs
+                ],
+            }
+        )
+
+    return duplicates
+
+
 def simplify_row(row: dict[str, object]) -> dict[str, object]:
     """出力向けにcandidate行の主要項目だけを抽出する。"""
     candidate = str(row.get("candidate", ""))
@@ -481,6 +519,7 @@ def build_structured_report(
     mapping_conflicts_candidate: list[dict[str, object]],
     mapping_conflicts_file: list[dict[str, object]],
     url_conflicts: list[dict[str, object]],
+    duplicate_rows: list[dict[str, object]],
     batch_size: int,
     batch_family_cap: int,
 ) -> dict[str, object]:
@@ -516,6 +555,7 @@ def build_structured_report(
             "mapping_conflicts_candidate": len(mapping_conflicts_candidate),
             "mapping_conflicts_file": len(mapping_conflicts_file),
             "url_conflicts": len(url_conflicts),
+            "duplicate_rows": len(duplicate_rows),
         },
         "family_progress": [
             {
@@ -550,6 +590,7 @@ def build_structured_report(
             "file_to_candidates": mapping_conflicts_file,
         },
         "url_conflicts": url_conflicts,
+        "duplicate_rows": duplicate_rows,
         "suggested_batches": {
             "controls": {
                 "glow": simplify_row(glow_control) if glow_control else None,
@@ -703,6 +744,7 @@ def build_report(
     mapping_conflicts_candidate: list[dict[str, object]],
     mapping_conflicts_file: list[dict[str, object]],
     url_conflicts: list[dict[str, object]],
+    duplicate_rows: list[dict[str, object]],
     batch_size: int,
     batch_family_cap: int,
 ) -> str:
@@ -742,6 +784,7 @@ def build_report(
     lines.append(f"- mapping_conflicts_candidate: {len(mapping_conflicts_candidate)}")
     lines.append(f"- mapping_conflicts_file: {len(mapping_conflicts_file)}")
     lines.append(f"- url_conflicts: {len(url_conflicts)}")
+    lines.append(f"- duplicate_rows: {len(duplicate_rows)}")
     lines.append("")
 
     if family_progress:
@@ -820,6 +863,22 @@ def build_report(
             candidates = ", ".join(f"`{c}`" for c in ent["candidates"])
             files = ", ".join(f"`{f}`" for f in ent["files"])
             lines.append(f"| {ent['x_post_url']} | {candidates} | {files} |")
+        lines.append("")
+
+    if duplicate_rows:
+        lines.append("## Duplicate rows (same candidate/file/observed/url)")
+        lines.append("")
+        lines.append("主テーブルと extra メモの二重登録などで同一観測が重複した行。attempts集計を歪めるため整理推奨。")
+        lines.append("")
+        lines.append("| candidate | file | observed | x_post_url | count | sources |")
+        lines.append("|---|---|---|---|---:|---|")
+        for ent in duplicate_rows:
+            sources = ", ".join(
+                f"`{src['source_file']}#{src['source_line']}`" for src in ent["sources"]
+            )
+            lines.append(
+                f"| `{ent['candidate']}` | `{ent['file']}` | `{ent['observed']}` | {ent['x_post_url']} | {ent['count']} | {sources} |"
+            )
         lines.append("")
 
     if pending_rows:
@@ -1004,6 +1063,11 @@ def main() -> None:
         action="store_true",
         help="x_post_url が複数candidate/fileへ紐づく不整合があれば終了コード2を返す",
     )
+    ap.add_argument(
+        "--strict-duplicate-rows",
+        action="store_true",
+        help="同一観測行の重複（candidate/file/observed/url一致）があれば終了コード2を返す",
+    )
     args = ap.parse_args()
 
     if args.batch_size <= 0:
@@ -1067,6 +1131,7 @@ def main() -> None:
     )
     mapping_conflicts_candidate, mapping_conflicts_file = find_mapping_conflicts(rows)
     url_conflicts = find_url_conflicts(rows)
+    duplicate_rows = find_duplicate_rows(rows)
 
     print(f"observation_files: {len(obs_paths)}")
     for p in obs_paths:
@@ -1137,6 +1202,18 @@ def main() -> None:
             files = ",".join(str(f) for f in ent["files"])
             print(f"- {ent['x_post_url']} (candidates={candidates} / files={files})")
 
+    print(f"duplicate_rows: {len(duplicate_rows)}")
+    if duplicate_rows:
+        print("duplicate_rows_list:")
+        for ent in duplicate_rows:
+            source_short = ",".join(
+                f"{Path(str(src['source_file'])).name}#{src['source_line']}"
+                for src in ent["sources"]
+            )
+            print(
+                f"- {ent['candidate']} ({ent['file']} / {ent['observed']} / {ent['x_post_url']} / count={ent['count']} / sources={source_short})"
+            )
+
     if bad_observed:
         print("invalid_observed:")
         for x in bad_observed:
@@ -1159,6 +1236,7 @@ def main() -> None:
             mapping_conflicts_candidate,
             mapping_conflicts_file,
             url_conflicts,
+            duplicate_rows,
             batch_size=args.batch_size,
             batch_family_cap=args.batch_family_cap,
         )
@@ -1180,6 +1258,7 @@ def main() -> None:
             mapping_conflicts_candidate=mapping_conflicts_candidate,
             mapping_conflicts_file=mapping_conflicts_file,
             url_conflicts=url_conflicts,
+            duplicate_rows=duplicate_rows,
             batch_size=args.batch_size,
             batch_family_cap=args.batch_family_cap,
         )
@@ -1221,6 +1300,9 @@ def main() -> None:
         raise SystemExit(2)
 
     if args.strict_url_mapping and url_conflicts:
+        raise SystemExit(2)
+
+    if args.strict_duplicate_rows and duplicate_rows:
         raise SystemExit(2)
 
     print("OK")

@@ -124,6 +124,7 @@ python3 scripts/check_human_observations.py \
 - `mapping_conflicts_candidate`: 同一candidateに複数fileが紐づく件数（candidate→file 不整合）
 - `mapping_conflicts_file`: 同一fileを複数candidateが参照する件数（file→candidate 不整合）
 - `url_conflicts`: 同一 `x_post_url` が複数candidate/fileに紐づく件数（URL帰属不整合）
+- `duplicate_rows`: candidate/file/observed/url が一致する重複行の件数（主表とextraの二重登録検出）
 - `observation_files`: チェック時に読み込んだ観測ファイル一覧（複数ファイル運用の確認用）
 - `family_progress_latest`: candidate最新状態を family 別に集計（resolved/uncertain/todo_or_url_todo/completion）
 - `--report-json-out`: pending/retry/conflict/推奨バッチをJSONで出力（自動投稿フロー連携用）
@@ -142,6 +143,7 @@ python3 scripts/check_human_observations.py \
 - `--strict-retry` を付けると最新観測が `whiteout/blackout/mixed` の候補が1件でも終了コード2
 - `--strict-mapping` を付けると candidate↔file 対応の不整合（1対多/多対1）が1件でも終了コード2
 - `--strict-url-mapping` を付けると `x_post_url` の帰属不整合（同一URLが複数candidate/fileに紐づく）が1件でも終了コード2
+- `--strict-duplicate-rows` を付けると同一観測行の重複（candidate/file/observed/url一致）が1件でも終了コード2
 
 詳細は `docs/reproduction-candidates.md` / `docs/human-observations.md` /
 `docs/human-observations-extra.md` を参照。

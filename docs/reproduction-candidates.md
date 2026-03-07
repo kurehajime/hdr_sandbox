@@ -1,6 +1,6 @@
-# success_sample.png 再現候補の生成手順（第25版）
+# success_sample.png 再現候補の生成手順（第26版）
 
-更新日: 2026-03-08 (v25: x_post_url 帰属不整合チェックを追加)
+更新日: 2026-03-08 (v26: 同一観測行の重複検出を追加)
 
 ## 目的
 
@@ -129,6 +129,13 @@ python3 scripts/check_human_observations.py \
   - `--strict-retry` で最新観測が `whiteout/blackout/mixed` の候補をCI失敗扱いにできる
   - `url_conflicts`（同一 `x_post_url` が複数candidate/fileへ紐づく不整合）を検出
   - `--strict-url-mapping` で URL帰属不整合をCI失敗扱いにできる
+  - `duplicate_rows`（candidate/file/observed/url が一致する重複行）を検出
+  - `--strict-duplicate-rows` で重複行をCI失敗扱いにできる
+- 2026-03-08 v26 追加:
+  - `duplicate_rows` を追加（candidate/file/observed/url が一致する重複行を検出）
+  - 重複行の `source_file#source_line` をレポート表示し、主表+extraの二重登録を即修正しやすくした
+  - `--strict-duplicate-rows` を追加（重複行が1件でもCI失敗扱い）
+  - JSONレポートに `duplicate_rows` セクションを追加
 - 2026-03-08 v25 追加:
   - `url_conflicts` を追加（同一URLの多重帰属を検出）
   - `--strict-url-mapping` を追加（URL帰属不整合をCIで即検出）
@@ -170,7 +177,8 @@ python3 scripts/check_human_observations.py \
   --batch-family-cap 2 \
   --strict-retry \
   --strict-mapping \
-  --strict-url-mapping
+  --strict-url-mapping \
+  --strict-duplicate-rows
 ```
 
 ### 基本4候補
