@@ -24,6 +24,8 @@
 | probe_cicp_bt2020_srgb | `candidate_probe_cicp_bt2020_srgb.png` | 400x400 | 16 | 6 | yes | [9, 13, 0, 1] | NO | NO |
 | probe_cicp_bt709_pq | `candidate_probe_cicp_bt709_pq.png` | 400x400 | 16 | 6 | yes | [1, 16, 0, 1] | NO | NO |
 | probe_cicp_bt709_srgb | `candidate_probe_cicp_bt709_srgb.png` | 400x400 | 16 | 6 | yes | [1, 13, 0, 1] | NO | NO |
+| probe_cicp_bt2020_pq_limited | `candidate_probe_cicp_bt2020_pq_limited.png` | 400x400 | 16 | 6 | yes | [9, 16, 0, 0] | NO | NO |
+| probe_cicp_bt2020_pq_matrix_1 | `candidate_probe_cicp_bt2020_pq_matrix_1.png` | 400x400 | 16 | 6 | yes | [9, 16, 1, 1] | NO | NO |
 | probe_size_512 | `candidate_probe_size_512.png` | 512x512 | 16 | 6 | yes | [9, 16, 0, 1] | YES | YES |
 | probe_size_512_nontransparent | `candidate_probe_size_512_nontransparent.png` | 512x512 | 16 | 6 | yes | [9, 16, 0, 1] | YES | YES |
 | probe_size_512_alpha255_bright_patch | `candidate_probe_size_512_alpha255_bright_patch.png` | 512x512 | 16 | 6 | yes | [9, 16, 0, 1] | YES | YES |
@@ -43,7 +45,7 @@ extended候補の狙い:
 - `probe_alpha_luma_matrix`: 2Dグリッド（x=alpha, y=luma）でしきい値境界形状を1枚で観測
 - `probe_isoeff_triplet`: 3行帯で目標effectiveを固定し、列方向alpha変化に対する均一性を検証
 - `probe_threshold_zoom_matrix`: alpha/lumaの境界近傍を高密度サンプリングし、境界線を細かく追跡
-- `probe_cicp_bt2020_pq` / `probe_cicp_bt2020_srgb` / `probe_cicp_bt709_pq` / `probe_cicp_bt709_srgb`: 同一ピクセルでICC内cicpのみを切替え、transfer/primaries寄与を比較
+- `probe_cicp_bt2020_pq` / `probe_cicp_bt2020_srgb` / `probe_cicp_bt709_pq` / `probe_cicp_bt709_srgb` / `probe_cicp_bt2020_pq_limited` / `probe_cicp_bt2020_pq_matrix_1`: 同一ピクセルでICC内cicpのみを切替え、transfer/primaries/range/matrix寄与を比較
 - `probe_size_512`: 512化のみ（従来観測の再確認）
 - `probe_size_512_nontransparent`: 512 + alpha=255固定（サイズ要因と透明要因の切り分け）
 - `probe_size_512_alpha255_bright_patch`: 512 + alpha=255 + 右側高輝度パッチ（実効輝度しきい値を確認）

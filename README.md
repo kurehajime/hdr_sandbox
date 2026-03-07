@@ -61,6 +61,8 @@ python3 scripts/make_candidates.py \
 - `generated/candidate_probe_cicp_bt2020_srgb.png`
 - `generated/candidate_probe_cicp_bt709_pq.png`
 - `generated/candidate_probe_cicp_bt709_srgb.png`
+- `generated/candidate_probe_cicp_bt2020_pq_limited.png`
+- `generated/candidate_probe_cicp_bt2020_pq_matrix_1.png`
 - `generated/candidate_probe_size_512.png`
 - `generated/candidate_probe_size_512_nontransparent.png`
 - `generated/candidate_probe_size_512_alpha255_bright_patch.png`

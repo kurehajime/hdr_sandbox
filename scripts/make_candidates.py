@@ -225,6 +225,8 @@ CICP_VARIANTS = [
     ("bt2020_srgb", [9, 13, 0, 1]),
     ("bt709_pq", [1, 16, 0, 1]),
     ("bt709_srgb", [1, 13, 0, 1]),
+    ("bt2020_pq_limited", [9, 16, 0, 0]),
+    ("bt2020_pq_matrix_1", [9, 16, 1, 1]),
 ]
 
 
@@ -758,6 +760,22 @@ def build_candidates(
                     icc_variants["bt709_srgb"],
                 ),
                 (
+                    "probe_cicp_bt2020_pq_limited",
+                    outdir / "candidate_probe_cicp_bt2020_pq_limited.png",
+                    arr16_alpha64,
+                    16,
+                    6,
+                    icc_variants["bt2020_pq_limited"],
+                ),
+                (
+                    "probe_cicp_bt2020_pq_matrix_1",
+                    outdir / "candidate_probe_cicp_bt2020_pq_matrix_1.png",
+                    arr16_alpha64,
+                    16,
+                    6,
+                    icc_variants["bt2020_pq_matrix_1"],
+                ),
+                (
                     "probe_size_512",
                     outdir / "candidate_probe_size_512.png",
                     arr16_rgba_512,
@@ -970,6 +988,7 @@ def build_candidates(
             "# CICP Variant Spec (auto-generated)",
             "",
             "`candidate_probe_cicp_*.png` は、同一ピクセル（alpha=64固定）で ICC 内 cicp だけを切り替える比較セットです。",
+            "primaries / transfer / matrix / range の寄与を分離観測します。",
             "",
             "| probe | primaries | transfer | matrix | range | cicp |",
             "|---|---:|---:|---:|---:|---|",
@@ -984,8 +1003,10 @@ def build_candidates(
                 "",
                 "観測ポイント:",
                 "- `bt2020_pq` を基準に、`bt2020_srgb` で非発光化するか（transfer要因）",
-                "- `bt709_pq` / `bt709_srgb` の差で primaries 要因が見えるか",
-                "- 4条件の見え方が transfer 主導か、primaries 主導か、交互作用かを判定する",
+                "- `bt2020_pq` と `bt709_pq` の差で primaries 要因を判定する",
+                "- `bt2020_pq` と `bt2020_pq_limited` の差で range 要因を判定する",
+                "- `bt2020_pq` と `bt2020_pq_matrix_1` の差で matrix 要因を判定する",
+                "- 6条件の見え方から、どのcicp要素が支配的かを判定する",
             ]
         )
         (outdir / "cicp_variant_spec.md").write_text("\n".join(cicp_lines), encoding="utf-8")
@@ -1033,7 +1054,7 @@ def write_report(results: list[CandidateResult], path: Path, *, extended: bool) 
                 "- `probe_alpha_luma_matrix`: 2Dグリッド（x=alpha, y=luma）でしきい値境界形状を1枚で観測",
                 "- `probe_isoeff_triplet`: 3行帯で目標effectiveを固定し、列方向alpha変化に対する均一性を検証",
                 "- `probe_threshold_zoom_matrix`: alpha/lumaの境界近傍を高密度サンプリングし、境界線を細かく追跡",
-                "- `probe_cicp_bt2020_pq` / `probe_cicp_bt2020_srgb` / `probe_cicp_bt709_pq` / `probe_cicp_bt709_srgb`: 同一ピクセルでICC内cicpのみを切替え、transfer/primaries寄与を比較",
+                "- `probe_cicp_bt2020_pq` / `probe_cicp_bt2020_srgb` / `probe_cicp_bt709_pq` / `probe_cicp_bt709_srgb` / `probe_cicp_bt2020_pq_limited` / `probe_cicp_bt2020_pq_matrix_1`: 同一ピクセルでICC内cicpのみを切替え、transfer/primaries/range/matrix寄与を比較",
                 "- `probe_size_512`: 512化のみ（従来観測の再確認）",
                 "- `probe_size_512_nontransparent`: 512 + alpha=255固定（サイズ要因と透明要因の切り分け）",
                 "- `probe_size_512_alpha255_bright_patch`: 512 + alpha=255 + 右側高輝度パッチ（実効輝度しきい値を確認）",

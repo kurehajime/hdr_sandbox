@@ -27,6 +27,8 @@
 | probe_cicp_bt2020_srgb | `candidate_probe_cicp_bt2020_srgb.png` | TODO | TODO | TODO |
 | probe_cicp_bt709_pq | `candidate_probe_cicp_bt709_pq.png` | TODO | TODO | TODO |
 | probe_cicp_bt709_srgb | `candidate_probe_cicp_bt709_srgb.png` | TODO | TODO | TODO |
+| probe_cicp_bt2020_pq_limited | `candidate_probe_cicp_bt2020_pq_limited.png` | TODO | TODO | TODO |
+| probe_cicp_bt2020_pq_matrix_1 | `candidate_probe_cicp_bt2020_pq_matrix_1.png` | TODO | TODO | TODO |
 | probe_size_512 | `candidate_probe_size_512.png` | TODO | TODO | TODO |
 | probe_size_512_nontransparent | `candidate_probe_size_512_nontransparent.png` | TODO | TODO | TODO |
 | probe_size_512_alpha255_bright_patch | `candidate_probe_size_512_alpha255_bright_patch.png` | TODO | TODO | TODO |

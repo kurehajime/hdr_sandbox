@@ -20,6 +20,8 @@
 | probe_cicp_bt2020_srgb | `candidate_probe_cicp_bt2020_srgb.png` | todo | TODO | 新規: transferのみPQ→sRGBに変更 |
 | probe_cicp_bt709_pq | `candidate_probe_cicp_bt709_pq.png` | todo | TODO | 新規: primariesのみBT.2020→BT.709に変更 |
 | probe_cicp_bt709_srgb | `candidate_probe_cicp_bt709_srgb.png` | todo | TODO | 新規: primaries+transfer同時変更 |
+| probe_cicp_bt2020_pq_limited | `candidate_probe_cicp_bt2020_pq_limited.png` | todo | TODO | 新規: rangeのみFull→Limitedに変更 |
+| probe_cicp_bt2020_pq_matrix_1 | `candidate_probe_cicp_bt2020_pq_matrix_1.png` | todo | TODO | 新規: matrixのみ0→1に変更 |
 
 ## observed 値の凡例
 
