@@ -16,13 +16,15 @@
 | probe_alpha_16 | `candidate_probe_alpha_16.png` | TODO | TODO | TODO |
 | probe_alpha_64 | `candidate_probe_alpha_64.png` | TODO | TODO | TODO |
 | probe_alpha_gradient | `candidate_probe_alpha_gradient.png` | TODO | TODO | TODO |
+| probe_alpha_gradient_rl | `candidate_probe_alpha_gradient_rl.png` | TODO | TODO | TODO |
+| probe_alpha_gradient_tb | `candidate_probe_alpha_gradient_tb.png` | TODO | TODO | TODO |
 | probe_alpha_lr_split_16_64 | `candidate_probe_alpha_lr_split_16_64.png` | TODO | TODO | TODO |
-| probe_alpha_ladder_1_255 | `candidate_probe_alpha_ladder_1_255.png` | TODO | https://x.com/kurehajime/status/2030302514512638268 | 右から2番目くらいから右が白より白い |
+| probe_alpha_ladder_1_255 | `candidate_probe_alpha_ladder_1_255.png` | TODO | TODO | TODO |
 | probe_luma_ladder_alpha255 | `candidate_probe_luma_ladder_alpha255.png` | TODO | TODO | TODO |
 | probe_luma_ladder_alpha64 | `candidate_probe_luma_ladder_alpha64.png` | TODO | TODO | TODO |
 | probe_alpha_luma_matrix | `candidate_probe_alpha_luma_matrix.png` | TODO | TODO | TODO |
 | probe_isoeff_triplet | `candidate_probe_isoeff_triplet.png` | TODO | TODO | TODO |
-| probe_threshold_zoom_matrix | `candidate_probe_threshold_zoom_matrix.png` | TODO | https://x.com/kurehajime/status/2030297528013554096 | 右下に向かって白くなるが、全体的に黒っぽく、白より白い領域はなく、最大でも灰色だった |
+| probe_threshold_zoom_matrix | `candidate_probe_threshold_zoom_matrix.png` | TODO | TODO | TODO |
 | probe_cicp_bt2020_pq | `candidate_probe_cicp_bt2020_pq.png` | TODO | TODO | TODO |
 | probe_cicp_bt2020_srgb | `candidate_probe_cicp_bt2020_srgb.png` | TODO | TODO | TODO |
 | probe_cicp_bt709_pq | `candidate_probe_cicp_bt709_pq.png` | TODO | TODO | TODO |

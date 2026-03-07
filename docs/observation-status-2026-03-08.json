@@ -4,9 +4,9 @@
       "docs/human-observations.md",
       "docs/human-observations-extra.md"
     ],
-    "total_rows": 27,
-    "unique_candidates": 27,
-    "pending_rows": 19,
+    "total_rows": 29,
+    "unique_candidates": 29,
+    "pending_rows": 21,
     "conflicting_candidates": 0,
     "retry_candidates": 5,
     "missing_in_table": 0
@@ -38,11 +38,11 @@
     },
     {
       "family": "alpha",
-      "total": 9,
+      "total": 11,
       "resolved": 1,
       "uncertain": 3,
-      "todo_or_url_todo": 7,
-      "completion": 0.1111111111111111
+      "todo_or_url_todo": 9,
+      "completion": 0.09090909090909091
     },
     {
       "family": "luma",
@@ -145,6 +145,20 @@
     {
       "candidate": "probe_alpha_64",
       "file": "candidate_probe_alpha_64.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "alpha"
+    },
+    {
+      "candidate": "probe_alpha_gradient_rl",
+      "file": "candidate_probe_alpha_gradient_rl.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "alpha"
+    },
+    {
+      "candidate": "probe_alpha_gradient_tb",
+      "file": "candidate_probe_alpha_gradient_tb.png",
       "observed": "todo",
       "x_post_url": "TODO",
       "family": "alpha"
@@ -352,8 +366,8 @@
         "family": "alpha"
       },
       {
-        "candidate": "probe_alpha_ladder_1_255",
-        "file": "candidate_probe_alpha_ladder_1_255.png",
+        "candidate": "probe_alpha_gradient_rl",
+        "file": "candidate_probe_alpha_gradient_rl.png",
         "observed": "todo",
         "x_post_url": "TODO",
         "family": "alpha"

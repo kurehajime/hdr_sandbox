@@ -592,6 +592,15 @@ def build_candidates(
         grad = np.linspace(1, 65535, arr16_alpha_grad.shape[1], dtype=np.uint16)
         arr16_alpha_grad[:, :, 3] = grad[np.newaxis, :]
 
+        # 右→左グラデーション（左右位置バイアスの切り分け用）
+        arr16_alpha_grad_rl = arr16_rgba.copy()
+        arr16_alpha_grad_rl[:, :, 3] = grad[np.newaxis, ::-1]
+
+        # 上→下グラデーション（左右固定UI要因の切り分け用）
+        arr16_alpha_grad_tb = arr16_rgba.copy()
+        grad_tb = np.linspace(1, 65535, arr16_alpha_grad_tb.shape[0], dtype=np.uint16)
+        arr16_alpha_grad_tb[:, :, 3] = grad_tb[:, np.newaxis]
+
         arr16_rgba_512 = _resize_like(arr16_rgba, (512, 512))
         arr16_rgba_512_alpha255 = arr16_rgba_512.copy()
         arr16_rgba_512_alpha255[:, :, 3] = 65535
@@ -667,6 +676,22 @@ def build_candidates(
                     "probe_alpha_gradient",
                     outdir / "candidate_probe_alpha_gradient.png",
                     arr16_alpha_grad,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
+                    "probe_alpha_gradient_rl",
+                    outdir / "candidate_probe_alpha_gradient_rl.png",
+                    arr16_alpha_grad_rl,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
+                    "probe_alpha_gradient_tb",
+                    outdir / "candidate_probe_alpha_gradient_tb.png",
+                    arr16_alpha_grad_tb,
                     16,
                     6,
                     icc_success,
@@ -847,6 +872,27 @@ def build_candidates(
             ]
         )
         (outdir / "alpha_ladder_spec.md").write_text("\n".join(ladder_lines), encoding="utf-8")
+
+        gradient_lines = [
+            "# Alpha Gradient Orientation Spec (auto-generated)",
+            "",
+            "`candidate_probe_alpha_gradient*.png` は alphaグラデーションの向きだけを変えた比較セットです。",
+            "",
+            "| file | alpha direction | purpose |",
+            "|---|---|---|",
+            "| `candidate_probe_alpha_gradient.png` | left -> right | 基準（既観測: 右半分のみ発光） |",
+            "| `candidate_probe_alpha_gradient_rl.png` | right -> left | 左右位置バイアス vs alpha依存の切り分け |",
+            "| `candidate_probe_alpha_gradient_tb.png` | top -> bottom | 左右固定UI要因（オーバーレイ等）の切り分け |",
+            "",
+            "観測ポイント:",
+            "- `gradient` と `gradient_rl` で発光側が反転するか",
+            "  - 反転する: alpha値依存が主因",
+            "  - 反転しない: 画面位置依存（UI/表示パイプライン）を疑う",
+            "- `gradient_tb` で上半分/下半分の偏りが出るか",
+            "  - 上下でも偏る: 軸非依存のしきい値要因",
+            "  - 左右だけ偏る: 左右固定UI要因の疑いが強い",
+        ]
+        (outdir / "alpha_gradient_orientation_spec.md").write_text("\n".join(gradient_lines), encoding="utf-8")
 
         luma_lines = [
             "# Luma Ladder Spec (auto-generated)",
@@ -1048,6 +1094,8 @@ def write_report(results: list[CandidateResult], path: Path, *, extended: bool) 
                 "- `probe_alpha_255` / `probe_alpha_0`: alpha=255 と alpha=0 の極端条件を比較",
                 "- `probe_alpha_1` / `probe_alpha_16` / `probe_alpha_64`: 極小alpha域の表示しきい値を探索",
                 "- `probe_alpha_gradient`: alphaを1..65535で連続変化（alpha依存の境界を観測）",
+                "- `probe_alpha_gradient_rl`: 右→左グラデーションで左右位置バイアスを切り分け",
+                "- `probe_alpha_gradient_tb`: 上→下グラデーションで左右固定UI要因を切り分け",
                 "- `probe_alpha_lr_split_16_64`: 左右分割（左alpha=16 / 右alpha=64）で見え方を即比較",
                 "- `probe_alpha_ladder_1_255`: alpha段階(1..255)の縦バーで発光しきい値の概算を1枚で観測",
                 "- `probe_luma_ladder_alpha255` / `probe_luma_ladder_alpha64`: RGB段階バー（alpha固定）で実効輝度しきい値を探索",

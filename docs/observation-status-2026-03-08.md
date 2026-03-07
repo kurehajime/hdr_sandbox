@@ -1,8 +1,8 @@
 # Human Observation Status Report
 
-- total_rows: 27
-- unique_candidates: 27
-- pending_rows: 19
+- total_rows: 29
+- unique_candidates: 29
+- pending_rows: 21
 - conflicting_candidates: 0
 - retry_candidates: 5
 - missing_in_table: 0
@@ -14,7 +14,7 @@
 | `cicp` | 6 | 0 | 0 | 6 | 0.0% |
 | `threshold` | 1 | 1 | 0 | 0 | 100.0% |
 | `isoeff` | 1 | 0 | 0 | 1 | 0.0% |
-| `alpha` | 9 | 1 | 3 | 7 | 11.1% |
+| `alpha` | 11 | 1 | 3 | 9 | 9.1% |
 | `luma` | 2 | 0 | 0 | 2 | 0.0% |
 | `size` | 3 | 0 | 2 | 3 | 0.0% |
 | `probe_other` | 1 | 1 | 0 | 0 | 100.0% |
@@ -60,6 +60,8 @@
 |---|---|---|---|
 | `probe_alpha_16` | `candidate_probe_alpha_16.png` | `todo` | TODO |
 | `probe_alpha_64` | `candidate_probe_alpha_64.png` | `todo` | TODO |
+| `probe_alpha_gradient_rl` | `candidate_probe_alpha_gradient_rl.png` | `todo` | TODO |
+| `probe_alpha_gradient_tb` | `candidate_probe_alpha_gradient_tb.png` | `todo` | TODO |
 | `probe_alpha_ladder_1_255` | `candidate_probe_alpha_ladder_1_255.png` | `todo` | TODO |
 | `probe_alpha_lr_split_16_64` | `candidate_probe_alpha_lr_split_16_64.png` | `todo` | TODO |
 | `probe_alpha_luma_matrix` | `candidate_probe_alpha_luma_matrix.png` | `todo` | TODO |
@@ -101,7 +103,7 @@
 - `candidate_probe_isoeff_triplet.png` (probe_isoeff_triplet / observed=todo / url=TODO)
 - `candidate_probe_alpha_16.png` (probe_alpha_16 / observed=todo / url=TODO)
 - `candidate_probe_alpha_64.png` (probe_alpha_64 / observed=todo / url=TODO)
-- `candidate_probe_alpha_ladder_1_255.png` (probe_alpha_ladder_1_255 / observed=todo / url=TODO)
+- `candidate_probe_alpha_gradient_rl.png` (probe_alpha_gradient_rl / observed=todo / url=TODO)
 
 ### 1b) 次バッチ候補（多様性重視・family round-robin / 最大 10 件）
 

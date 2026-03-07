@@ -50,6 +50,8 @@ python3 scripts/make_candidates.py \
 - `generated/candidate_probe_alpha_16.png`
 - `generated/candidate_probe_alpha_64.png`
 - `generated/candidate_probe_alpha_gradient.png`
+- `generated/candidate_probe_alpha_gradient_rl.png`
+- `generated/candidate_probe_alpha_gradient_tb.png`
 - `generated/candidate_probe_alpha_lr_split_16_64.png`
 - `generated/candidate_probe_alpha_ladder_1_255.png`
 - `generated/candidate_probe_luma_ladder_alpha255.png`
@@ -68,6 +70,7 @@ python3 scripts/make_candidates.py \
 - `generated/candidate_probe_size_512_alpha255_bright_patch.png`
 - `generated/comparison.md`（比較表）
 - `generated/alpha_ladder_spec.md`（alpha段階のlane対応表）
+- `generated/alpha_gradient_orientation_spec.md`（alphaグラデーション向き比較の観測仕様）
 - `generated/luma_ladder_spec.md`（RGB段階と実効輝度のlane対応表）
 - `generated/alpha_luma_matrix_spec.md`（2Dマトリクスの行列lane対応表）
 - `generated/isoeff_triplet_spec.md`（目標effective固定帯のlane対応表）
