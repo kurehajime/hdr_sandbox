@@ -193,6 +193,8 @@ def _resize_like(arr: np.ndarray, size: tuple[int, int]) -> np.ndarray:
 
 ALPHA_LADDER_VALUES = [1, 2, 4, 8, 16, 24, 32, 48, 64, 96, 128, 192, 255]
 LUMA_LADDER_VALUES = [512, 1024, 2048, 4096, 8192, 16384, 24576, 32768, 49152, 65535]
+MATRIX_ALPHA_VALUES = [1, 2, 4, 8, 16, 24, 32, 48, 64, 96, 128, 160, 192, 224, 255]
+MATRIX_LUMA_VALUES = [512, 1024, 2048, 4096, 8192, 12288, 16384, 24576, 32768, 49152, 65535]
 
 
 def _make_lr_split_pattern(*, width: int = 400, height: int = 400) -> np.ndarray:
@@ -296,6 +298,61 @@ def _make_luma_ladder_pattern(
     return arr
 
 
+def _make_alpha_luma_matrix_pattern(
+    *,
+    width: int = 400,
+    height: int = 400,
+    alpha_values: list[int] | None = None,
+    luma_values: list[int] | None = None,
+) -> np.ndarray:
+    """2Dマトリクス（x=alpha, y=luma）で、しきい値境界を1枚で観測する。"""
+    alphas = MATRIX_ALPHA_VALUES if alpha_values is None else alpha_values
+    lumas = MATRIX_LUMA_VALUES if luma_values is None else luma_values
+    if not alphas:
+        raise ValueError("alpha_values must not be empty")
+    if not lumas:
+        raise ValueError("luma_values must not be empty")
+
+    arr = np.zeros((height, width, 4), dtype=np.uint16)
+    arr[:, :, :3] = 1024
+    arr[:, :, 3] = 65535
+
+    mx = max(8, width // 40)
+    my = max(8, height // 40)
+    x0_base = mx
+    x1_base = width - mx
+    y0_base = my
+    y1_base = height - my
+
+    cols = len(alphas)
+    rows = len(lumas)
+
+    for r, l16 in enumerate(lumas):
+        y0 = y0_base + (r * (y1_base - y0_base)) // rows
+        y1 = y0_base + ((r + 1) * (y1_base - y0_base)) // rows
+        lv = np.uint16(max(0, min(65535, l16)))
+
+        for c, a8 in enumerate(alphas):
+            x0 = x0_base + (c * (x1_base - x0_base)) // cols
+            x1 = x0_base + ((c + 1) * (x1_base - x0_base)) // cols
+
+            arr[y0:y1, x0:x1, 0] = lv
+            arr[y0:y1, x0:x1, 1] = lv
+            arr[y0:y1, x0:x1, 2] = lv
+            arr[y0:y1, x0:x1, 3] = np.uint16(max(0, min(255, a8)) * 257)
+
+    for c in range(1, cols):
+        x = x0_base + (c * (x1_base - x0_base)) // cols
+        arr[y0_base:y1_base, max(0, x - 1) : min(width, x + 1), :3] = 0
+        arr[y0_base:y1_base, max(0, x - 1) : min(width, x + 1), 3] = 65535
+
+    for r in range(1, rows):
+        y = y0_base + (r * (y1_base - y0_base)) // rows
+        arr[max(0, y - 1) : min(height, y + 1), x0_base:x1_base, :3] = 0
+        arr[max(0, y - 1) : min(height, y + 1), x0_base:x1_base, 3] = 65535
+
+    return arr
+
 def build_candidates(
     input_path: Path,
     success_ref: Path,
@@ -384,6 +441,7 @@ def build_candidates(
         arr16_alpha_ladder = _make_alpha_ladder_pattern(width=400, height=400)
         arr16_luma_ladder_alpha255 = _make_luma_ladder_pattern(width=400, height=400, alpha_8bit=255)
         arr16_luma_ladder_alpha64 = _make_luma_ladder_pattern(width=400, height=400, alpha_8bit=64)
+        arr16_alpha_luma_matrix = _make_alpha_luma_matrix_pattern(width=400, height=400)
 
         targets.extend(
             [
@@ -471,6 +529,14 @@ def build_candidates(
                     "probe_luma_ladder_alpha64",
                     outdir / "candidate_probe_luma_ladder_alpha64.png",
                     arr16_luma_ladder_alpha64,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
+                    "probe_alpha_luma_matrix",
+                    outdir / "candidate_probe_alpha_luma_matrix.png",
+                    arr16_alpha_luma_matrix,
                     16,
                     6,
                     icc_success,
@@ -571,6 +637,48 @@ def build_candidates(
         )
         (outdir / "luma_ladder_spec.md").write_text("\n".join(luma_lines), encoding="utf-8")
 
+        matrix_lines = [
+            "# Alpha×Luma Matrix Spec (auto-generated)",
+            "",
+            "`candidate_probe_alpha_luma_matrix.png` は 2D グリッドで、",
+            "- 列(x): alpha(8bit)",
+            "- 行(y): RGB luma(16bit)",
+            "を同時に段階化しています。",
+            "",
+            "仮説:",
+            "- 光って見える境界は `effective ≈ (alpha/255) * (luma/65535)` の等高線に近く、",
+            "  画像上で左下→右上方向の境界として現れる。",
+            "",
+            "## Columns (x=alpha)",
+            "",
+            "| col | alpha_8bit | alpha_16bit | alpha_norm |",
+            "|---:|---:|---:|---:|",
+        ]
+        for i, a8 in enumerate(MATRIX_ALPHA_VALUES, start=1):
+            matrix_lines.append(f"| {i} | {a8} | {a8 * 257} | {a8 / 255:.4f} |")
+
+        matrix_lines.extend(
+            [
+                "",
+                "## Rows (y=luma)",
+                "",
+                "| row | luma_16bit | luma_norm |",
+                "|---:|---:|---:|",
+            ]
+        )
+        for i, l16 in enumerate(MATRIX_LUMA_VALUES, start=1):
+            matrix_lines.append(f"| {i} | {l16} | {l16 / 65535:.4f} |")
+
+        matrix_lines.extend(
+            [
+                "",
+                "## 観測ポイント",
+                "- 光る/光らない境界セルを手でなぞり、境界の傾き（alpha寄りかluma寄りか）を判定する",
+                "- 境界が急に折れ曲がる位置があれば、単純な積モデル以外の非線形要因を疑う",
+            ]
+        )
+        (outdir / "alpha_luma_matrix_spec.md").write_text("\n".join(matrix_lines), encoding="utf-8")
+
     return results
 
 
@@ -611,6 +719,7 @@ def write_report(results: list[CandidateResult], path: Path, *, extended: bool) 
                 "- `probe_alpha_lr_split_16_64`: 左右分割（左alpha=16 / 右alpha=64）で見え方を即比較",
                 "- `probe_alpha_ladder_1_255`: alpha段階(1..255)の縦バーで発光しきい値の概算を1枚で観測",
                 "- `probe_luma_ladder_alpha255` / `probe_luma_ladder_alpha64`: RGB段階バー（alpha固定）で実効輝度しきい値を探索",
+                "- `probe_alpha_luma_matrix`: 2Dグリッド（x=alpha, y=luma）でしきい値境界形状を1枚で観測",
                 "- `probe_size_512`: 512化のみ（従来観測の再確認）",
                 "- `probe_size_512_nontransparent`: 512 + alpha=255固定（サイズ要因と透明要因の切り分け）",
                 "- `probe_size_512_alpha255_bright_patch`: 512 + alpha=255 + 右側高輝度パッチ（実効輝度しきい値を確認）",

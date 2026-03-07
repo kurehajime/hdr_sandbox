@@ -96,6 +96,10 @@
 - `candidate_probe_luma_ladder_alpha64.png`
   - alpha=64固定でRGB(16bit)を段階化した縦バー
   - alphaを下げたときに、しきい値laneがどれだけ右にずれるかを観測する
+- `candidate_probe_alpha_luma_matrix.png`（今回追加）
+  - x軸=alpha(8bit), y軸=luma(16bit) の2Dグリッド
+  - 1枚の中で「光る/光らない」境界線の形状を観測し、積モデル `effective≈alpha×luma` を直接検証する
+  - lane定義は `generated/alpha_luma_matrix_spec.md` を参照
 
 ## 6. 当面の運用ルール
 
@@ -113,3 +117,16 @@
 - `candidate_probe_alpha_ladder_1_255`
   - https://x.com/kurehajime/status/2030265404149604611
   - → ６本目より右が普通の白より白に見える。とはいえ一番右端も強烈に光ってるというほどではない。
+
+## 7. 今回の30分イテレーション仮説（2D境界観測）
+
+仮説:
+
+- しきい値は1次元（alphaのみ／lumaのみ）ではなく、
+  `alpha` と `luma` の積で近似できる2次元境界として現れる。
+- そのため、`candidate_probe_alpha_luma_matrix.png` では
+  「左下(低alpha/低luma)は不発、右上(高alpha/高luma)は発光、
+  中間に斜めの境界」が観測されると予測する。
+
+この結果が得られれば、次段は境界近傍のみを高解像度サンプリングした
+細密マトリクス（例えば8x8→16x16局所拡大）へ進む。
