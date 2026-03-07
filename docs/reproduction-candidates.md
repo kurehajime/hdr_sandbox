@@ -1,6 +1,6 @@
-# success_sample.png 再現候補の生成手順（第12版）
+# success_sample.png 再現候補の生成手順（第13版）
 
-更新日: 2026-03-08 (v12: 観測表の網羅チェックと未観測レポート生成を追加)
+更新日: 2026-03-08 (v13: 観測衝突/再試行候補の自動抽出を追加)
 
 ## 目的
 
@@ -93,7 +93,10 @@ python3 scripts/check_human_observations.py \
 
 - 2026-03-08 追加:
   - `pending_rows`（未投稿/URL未反映）と `missing_in_table`（generatedに存在するが観測表未登録）を同時に検出
+  - `conflicting_candidates`（同一candidateの decisive 観測衝突）を検出
+  - `retry_candidates`（最新が whiteout/blackout/mixed）を抽出
   - `--report-out docs/observation-status-YYYY-MM-DD.md` で次の投稿計画レポートを自動生成
+  - `--strict-conflict` で再現性衝突をCI失敗扱いにできる
 
 ```bash
 python3 scripts/check_human_observations.py \

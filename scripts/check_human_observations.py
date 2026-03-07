@@ -10,6 +10,8 @@ from pathlib import Path
 
 
 VALID_OBSERVED = {"glows", "not_glows", "whiteout", "blackout", "mixed", "todo"}
+DECISIVE_OBSERVED = {"glows", "not_glows", "mixed"}
+NON_DECISIVE_OBSERVED = {"whiteout", "blackout"}
 
 
 def parse_rows(md: str) -> list[dict[str, str]]:
@@ -70,10 +72,45 @@ def generated_candidates(gen_dir: Path) -> set[str]:
     return names
 
 
+def summarize_candidates(rows: list[dict[str, str]]) -> dict[str, dict[str, object]]:
+    summary: dict[str, dict[str, object]] = {}
+    for r in rows:
+        key = r["candidate"]
+        ent = summary.setdefault(
+            key,
+            {
+                "candidate": key,
+                "file": r["file"],
+                "attempts": 0,
+                "latest_observed": "todo",
+                "latest_url": "TODO",
+                "decisive_set": set(),
+                "nondc_count": 0,
+                "has_pending": False,
+            },
+        )
+        ent["attempts"] = int(ent["attempts"]) + 1
+        ent["file"] = r["file"]
+        ent["latest_observed"] = r["observed"]
+        ent["latest_url"] = r["x_post_url"]
+
+        if r["observed"] in DECISIVE_OBSERVED:
+            ent["decisive_set"].add(r["observed"])
+        if r["observed"] in NON_DECISIVE_OBSERVED:
+            ent["nondc_count"] = int(ent["nondc_count"]) + 1
+
+        ent["has_pending"] = r["observed"] == "todo" or r["x_post_url"].upper() == "TODO"
+
+    return summary
+
+
 def build_report(
     rows: list[dict[str, str]],
     pending_rows: list[dict[str, str]],
     missing_in_table: set[str],
+    per_candidate: dict[str, dict[str, object]],
+    conflicts: list[dict[str, object]],
+    retry_candidates: list[dict[str, object]],
 ) -> str:
     by_family: dict[str, list[dict[str, str]]] = defaultdict(list)
     for r in pending_rows:
@@ -83,9 +120,39 @@ def build_report(
     lines.append("# Human Observation Status Report")
     lines.append("")
     lines.append(f"- total_rows: {len(rows)}")
+    lines.append(f"- unique_candidates: {len(per_candidate)}")
     lines.append(f"- pending_rows: {len(pending_rows)}")
+    lines.append(f"- conflicting_candidates: {len(conflicts)}")
+    lines.append(f"- retry_candidates: {len(retry_candidates)}")
     lines.append(f"- missing_in_table: {len(missing_in_table)}")
     lines.append("")
+
+    if conflicts:
+        lines.append("## Conflicting decisive observations (needs re-check)")
+        lines.append("")
+        lines.append("同一candidateで glows/not_glows/mixed が混在したもの。再投稿して再現性を確認する。")
+        lines.append("")
+        lines.append("| candidate | file | attempts | decisive_outcomes | latest_observed | latest_url |")
+        lines.append("|---|---|---:|---|---|---|")
+        for c in conflicts:
+            dec = ", ".join(sorted(c["decisive_set"]))
+            lines.append(
+                f"| `{c['candidate']}` | `{c['file']}` | {c['attempts']} | `{dec}` | `{c['latest_observed']}` | {c['latest_url']} |"
+            )
+        lines.append("")
+
+    if retry_candidates:
+        lines.append("## Retry candidates (non-decisive latest result)")
+        lines.append("")
+        lines.append("最新が whiteout/blackout/mixed の候補。判定可能な条件で再投稿する。")
+        lines.append("")
+        lines.append("| candidate | file | latest_observed | attempts | latest_url |")
+        lines.append("|---|---|---|---:|---|")
+        for c in retry_candidates:
+            lines.append(
+                f"| `{c['candidate']}` | `{c['file']}` | `{c['latest_observed']}` | {c['attempts']} | {c['latest_url']} |"
+            )
+        lines.append("")
 
     if pending_rows:
         lines.append("## Pending candidates (needs X posting / result entry)")
@@ -117,6 +184,10 @@ def build_report(
         lines.append("以下の6条件(cicp)を同一端末・同一表示条件で連続投稿して比較する:")
         for r in cicp:
             lines.append(f"- `{r['file']}`")
+    elif retry_candidates:
+        lines.append("cicp未観測がないため、次は再現性確認の再投稿を優先:")
+        for r in retry_candidates[:6]:
+            lines.append(f"- `{r['file']}` ({r['latest_observed']})")
     else:
         lines.append("- cicp未観測候補はありません。次は threshold/isoeff 系を優先。")
     lines.append("")
@@ -132,6 +203,11 @@ def main() -> None:
         "--strict-pending",
         action="store_true",
         help="pending(todo/TODO URL) が1件でもあれば終了コード2を返す",
+    )
+    ap.add_argument(
+        "--strict-conflict",
+        action="store_true",
+        help="同一candidateの decisive 観測が衝突したら終了コード2を返す",
     )
     args = ap.parse_args()
 
@@ -166,7 +242,26 @@ def main() -> None:
     gen_candidates = generated_candidates(gen_dir)
     missing_in_table = gen_candidates - obs_candidates
 
+    per_candidate = summarize_candidates(rows)
+    conflicts = sorted(
+        [
+            v
+            for v in per_candidate.values()
+            if len(v["decisive_set"]) >= 2
+        ],
+        key=lambda x: str(x["candidate"]),
+    )
+    retry_candidates = sorted(
+        [
+            v
+            for v in per_candidate.values()
+            if v["latest_observed"] in NON_DECISIVE_OBSERVED.union({"mixed"})
+        ],
+        key=lambda x: str(x["candidate"]),
+    )
+
     print(f"rows: {len(rows)}")
+    print(f"unique_candidates: {len(per_candidate)}")
     print("observed_counts:")
     for k, v in sorted(observed_counter.items()):
         print(f"- {k}: {v}")
@@ -176,6 +271,19 @@ def main() -> None:
         print("pending_candidates:")
         for r in pending_rows:
             print(f"- {r['candidate']} ({r['observed']} / {r['x_post_url']})")
+
+    print(f"conflicting_candidates: {len(conflicts)}")
+    if conflicts:
+        print("conflict_candidates:")
+        for c in conflicts:
+            dec = ",".join(sorted(c["decisive_set"]))
+            print(f"- {c['candidate']} ({dec})")
+
+    print(f"retry_candidates: {len(retry_candidates)}")
+    if retry_candidates:
+        print("retry_candidates_list:")
+        for c in retry_candidates:
+            print(f"- {c['candidate']} ({c['latest_observed']})")
 
     print(f"missing_in_table: {len(missing_in_table)}")
     if missing_in_table:
@@ -194,7 +302,7 @@ def main() -> None:
             print(f"- {f}")
 
     if args.report_out:
-        report = build_report(rows, pending_rows, missing_in_table)
+        report = build_report(rows, pending_rows, missing_in_table, per_candidate, conflicts, retry_candidates)
         out = Path(args.report_out)
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(report, encoding="utf-8")
@@ -204,6 +312,9 @@ def main() -> None:
         raise SystemExit(2)
 
     if args.strict_pending and pending_rows:
+        raise SystemExit(2)
+
+    if args.strict_conflict and conflicts:
         raise SystemExit(2)
 
     print("OK")

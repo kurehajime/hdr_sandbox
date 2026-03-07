@@ -93,8 +93,11 @@ python3 scripts/check_human_observations.py \
 ```
 
 - `pending_rows`: 未投稿またはURL未反映の候補数
+- `conflicting_candidates`: 同一candidateで `glows/not_glows/mixed` が衝突した候補数
+- `retry_candidates`: 最新観測が `whiteout/blackout/mixed` の再検証候補数
 - `missing_in_table`: generatedに存在するが観測表に未登録の候補数
 - `--strict-pending` を付けると pending が1件でも終了コード2
+- `--strict-conflict` を付けると decisive観測の衝突が1件でも終了コード2
 
 詳細は `docs/reproduction-candidates.md` / `docs/human-observations.md` /
 `docs/hypothesis-update-2026-03-07.md` を参照。

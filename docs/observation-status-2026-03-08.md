@@ -1,8 +1,23 @@
 # Human Observation Status Report
 
 - total_rows: 27
+- unique_candidates: 27
 - pending_rows: 19
+- conflicting_candidates: 0
+- retry_candidates: 5
 - missing_in_table: 0
+
+## Retry candidates (non-decisive latest result)
+
+最新が whiteout/blackout/mixed の候補。判定可能な条件で再投稿する。
+
+| candidate | file | latest_observed | attempts | latest_url |
+|---|---|---|---:|---|
+| `probe_alpha_0` | `candidate_probe_alpha_0.png` | `whiteout` | 1 | TODO |
+| `probe_alpha_1` | `candidate_probe_alpha_1.png` | `whiteout` | 1 | TODO |
+| `probe_alpha_gradient` | `candidate_probe_alpha_gradient.png` | `mixed` | 1 | https://x.com/kurehajime/status/2030244873153175737 |
+| `probe_size_512` | `candidate_probe_size_512.png` | `whiteout` | 1 | TODO |
+| `probe_size_512_nontransparent` | `candidate_probe_size_512_nontransparent.png` | `blackout` | 1 | TODO |
 
 ## Pending candidates (needs X posting / result entry)
 
