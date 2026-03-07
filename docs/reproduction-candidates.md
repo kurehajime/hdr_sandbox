@@ -1,6 +1,6 @@
-# success_sample.png 再現候補の生成手順（第17版）
+# success_sample.png 再現候補の生成手順（第18版）
 
-更新日: 2026-03-08 (v17: JSONレポート出力を追加)
+更新日: 2026-03-08 (v18: human-observations-*.md の自動読込を追加)
 
 ## 目的
 
@@ -91,7 +91,10 @@ python3 scripts/check_human_observations.py \
   --generated-dir generated
 ```
 
-補助ファイル（例: `docs/human-observations-extra.md`）を併用する場合:
+`--observations docs/human-observations.md` を使う場合、
+`docs/human-observations-*.md`（例: `docs/human-observations-extra.md`）は自動で同時読込される。
+
+明示指定する場合:
 
 ```bash
 python3 scripts/check_human_observations.py \
@@ -100,9 +103,12 @@ python3 scripts/check_human_observations.py \
   --generated-dir generated
 ```
 
+自動読込を無効化したい場合は `--no-default-extra-observations` を付ける。
+
 - 2026-03-08 追加:
   - `pending_rows`（未投稿/URL未反映）と `missing_in_table`（generatedに存在するが観測表未登録）を同時に検出
   - `observation_files`（読み込んだ観測Markdownの一覧）を出力し、複数ファイル運用の取りこぼしを抑止
+  - `--observations docs/human-observations.md` 時に `human-observations-*.md` を自動読込（人間の追記取り込み漏れを低減）
   - `conflicting_candidates`（同一candidateの decisive 観測衝突）を検出
   - `retry_candidates`（最新が whiteout/blackout/mixed）を抽出
   - `family_progress_latest`（family別の resolved / uncertain / todo_or_url_todo / completion）をCLI出力
@@ -120,7 +126,6 @@ python3 scripts/check_human_observations.py \
 ```bash
 python3 scripts/check_human_observations.py \
   --observations docs/human-observations.md \
-  --observations-glob 'human-observations-*.md' \
   --generated-dir generated \
   --report-out docs/observation-status-2026-03-08.md \
   --report-json-out docs/observation-status-2026-03-08.json \

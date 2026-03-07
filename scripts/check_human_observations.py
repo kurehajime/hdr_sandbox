@@ -16,6 +16,7 @@ NON_DECISIVE_OBSERVED = {"whiteout", "blackout"}
 RESOLVED_OBSERVED = {"glows", "not_glows"}
 UNCERTAIN_LATEST_OBSERVED = NON_DECISIVE_OBSERVED.union({"mixed"})
 FAMILY_PRIORITY = ["cicp", "threshold", "isoeff", "alpha", "luma", "size", "probe_other", "success", "fail", "other"]
+DEFAULT_EXTRA_OBSERVATIONS_GLOB = "human-observations-*.md"
 
 
 def parse_rows(md: str) -> list[dict[str, str]]:
@@ -84,11 +85,20 @@ def generated_candidates(gen_dir: Path) -> set[str]:
     return names
 
 
-def resolve_observation_paths(primary: Path, globs: list[str]) -> list[Path]:
+def resolve_observation_paths(
+    primary: Path,
+    globs: list[str],
+    *,
+    include_default_extra: bool,
+) -> list[Path]:
     paths = [primary]
     root = primary.parent
 
-    for pattern in globs:
+    effective_globs = list(globs)
+    if include_default_extra and primary.name == "human-observations.md":
+        effective_globs.append(DEFAULT_EXTRA_OBSERVATIONS_GLOB)
+
+    for pattern in effective_globs:
         matched = sorted(root.glob(pattern))
         if not matched:
             raise SystemExit(
@@ -542,6 +552,14 @@ def main() -> None:
             " (例: --observations-glob 'human-observations-*.md')"
         ),
     )
+    ap.add_argument(
+        "--no-default-extra-observations",
+        action="store_true",
+        help=(
+            "--observations が docs/human-observations.md の場合に自動追加される"
+            f" '{DEFAULT_EXTRA_OBSERVATIONS_GLOB}' 読み込みを無効化する"
+        ),
+    )
     ap.add_argument("--generated-dir", default="generated")
     ap.add_argument("--report-out", help="未観測候補のMarkdownレポート出力先")
     ap.add_argument(
@@ -570,7 +588,11 @@ def main() -> None:
     if not obs_path.exists():
         raise SystemExit(f"ERROR: not found: {obs_path}")
 
-    obs_paths = resolve_observation_paths(obs_path, args.observations_glob)
+    obs_paths = resolve_observation_paths(
+        obs_path,
+        args.observations_glob,
+        include_default_extra=not args.no_default_extra_observations,
+    )
     rows = load_rows(obs_paths)
     if not rows:
         raise SystemExit("ERROR: table rows not found in observations file(s)")

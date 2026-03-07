@@ -83,8 +83,10 @@ python3 scripts/check_human_observations.py \
   --generated-dir generated
 ```
 
-人間の追記を別ファイル（例: `docs/human-observations-extra.md`）へ分ける場合は、
-`--observations-glob` で同時読込できる:
+`--observations docs/human-observations.md` を指定した場合、
+`docs/human-observations-*.md`（例: `docs/human-observations-extra.md`）は自動で同時読込される。
+
+明示的に追加する場合は `--observations-glob` も利用可能:
 
 ```bash
 python3 scripts/check_human_observations.py \
@@ -93,12 +95,13 @@ python3 scripts/check_human_observations.py \
   --generated-dir generated
 ```
 
+自動読込を止めたい場合は `--no-default-extra-observations` を付与する。
+
 ### 4) 未観測候補のレポート生成（次の投稿計画）
 
 ```bash
 python3 scripts/check_human_observations.py \
   --observations docs/human-observations.md \
-  --observations-glob 'human-observations-*.md' \
   --generated-dir generated \
   --report-out docs/observation-status-YYYY-MM-DD.md \
   --report-json-out docs/observation-status-YYYY-MM-DD.json \
