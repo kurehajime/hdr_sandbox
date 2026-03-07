@@ -127,6 +127,12 @@ python3 scripts/check_human_observations.py \
   - `--batch-family-cap N` で次バッチ内の同一family件数を上限Nに抑制可能（0は無制限）
   - `--strict-conflict` で再現性衝突をCI失敗扱いにできる
   - `--strict-retry` で最新観測が `whiteout/blackout/mixed` の候補をCI失敗扱いにできる
+  - `url_conflicts`（同一 `x_post_url` が複数candidate/fileへ紐づく不整合）を検出
+  - `--strict-url-mapping` で URL帰属不整合をCI失敗扱いにできる
+- 2026-03-08 v25 追加:
+  - `url_conflicts` を追加（同一URLの多重帰属を検出）
+  - `--strict-url-mapping` を追加（URL帰属不整合をCIで即検出）
+  - JSONレポートに `url_conflicts` セクションを追加
 - 2026-03-08 v24 追加:
   - `--strict-retry` を追加（非決定結果の残存をCIで即検出）
 - 2026-03-08 v23 追加:
@@ -163,7 +169,8 @@ python3 scripts/check_human_observations.py \
   --batch-size 10 \
   --batch-family-cap 2 \
   --strict-retry \
-  --strict-mapping
+  --strict-mapping \
+  --strict-url-mapping
 ```
 
 ### 基本4候補
