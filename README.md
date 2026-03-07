@@ -108,7 +108,8 @@ python3 scripts/check_human_observations.py \
   --generated-dir generated \
   --report-out docs/observation-status-YYYY-MM-DD.md \
   --report-json-out docs/observation-status-YYYY-MM-DD.json \
-  --batch-size 10
+  --batch-size 10 \
+  --batch-family-cap 2
 ```
 
 - `pending_rows`: 未投稿またはURL未反映の候補数
@@ -121,6 +122,7 @@ python3 scripts/check_human_observations.py \
 - レポートの `Suggested immediate batch` で、
   - 端末状態確認用コントロール（glow / not_glow）
   - 状態優先（未観測todo → 再試行whiteout/blackout/mixed → URL補完）+ 系統優先つきの次バッチ候補（`--batch-size`件）
+  - `--batch-family-cap N` 指定時は、次バッチ内の同一family件数を上限Nで抑制（0は無制限）
   - 同一family連投を避ける `1b) 多様性重視バッチ`（round-robin）
   を自動提案
 - `--strict-pending` を付けると pending が1件でも終了コード2

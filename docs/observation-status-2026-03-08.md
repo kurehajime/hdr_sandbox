@@ -92,18 +92,18 @@
 
 ### 1) 次バッチ候補（最大 10 件）
 
-選定順: 未観測(todo/TODO) → 再試行(whiteout/blackout/mixed) → URL補完のみ
+選定順: 未観測(todo/TODO) → 再試行(whiteout/blackout/mixed) → URL補完のみ（同一family上限=2）
 
 - `candidate_probe_cicp_bt2020_pq.png` (probe_cicp_bt2020_pq / observed=todo / url=TODO)
 - `candidate_probe_cicp_bt2020_pq_limited.png` (probe_cicp_bt2020_pq_limited / observed=todo / url=TODO)
-- `candidate_probe_cicp_bt2020_pq_matrix_1.png` (probe_cicp_bt2020_pq_matrix_1 / observed=todo / url=TODO)
-- `candidate_probe_cicp_bt2020_srgb.png` (probe_cicp_bt2020_srgb / observed=todo / url=TODO)
-- `candidate_probe_cicp_bt709_pq.png` (probe_cicp_bt709_pq / observed=todo / url=TODO)
-- `candidate_probe_cicp_bt709_srgb.png` (probe_cicp_bt709_srgb / observed=todo / url=TODO)
 - `candidate_probe_isoeff_triplet.png` (probe_isoeff_triplet / observed=todo / url=TODO)
 - `candidate_probe_alpha_16.png` (probe_alpha_16 / observed=todo / url=TODO)
 - `candidate_probe_alpha_64.png` (probe_alpha_64 / observed=todo / url=TODO)
-- `candidate_probe_alpha_gradient_rl.png` (probe_alpha_gradient_rl / observed=todo / url=TODO)
+- `candidate_probe_luma_ladder_alpha255.png` (probe_luma_ladder_alpha255 / observed=todo / url=TODO)
+- `candidate_probe_luma_ladder_alpha64.png` (probe_luma_ladder_alpha64 / observed=todo / url=TODO)
+- `candidate_probe_size_512_alpha255_bright_patch.png` (probe_size_512_alpha255_bright_patch / observed=todo / url=TODO)
+- `candidate_probe_size_512.png` (probe_size_512 / observed=whiteout / url=TODO)
+- `candidate_probe_cicp_bt2020_pq_matrix_1.png` (probe_cicp_bt2020_pq_matrix_1 / observed=todo / url=TODO)
 
 ### 1b) 次バッチ候補（多様性重視・family round-robin / 最大 10 件）
 

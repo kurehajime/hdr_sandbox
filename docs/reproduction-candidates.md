@@ -123,6 +123,7 @@ python3 scripts/check_human_observations.py \
     - 同一family連投を避ける `1b) 多様性重視バッチ`（round-robin）
     を自動挿入
   - `--batch-size N` で次バッチ候補の件数を調整可能
+  - `--batch-family-cap N` で次バッチ内の同一family件数を上限Nに抑制可能（0は無制限）
   - `--strict-conflict` で再現性衝突をCI失敗扱いにできる
 - 2026-03-08 v19 追加:
   - `candidate_probe_alpha_gradient_rl.png`（右→左alphaグラデーション）を追加
@@ -135,7 +136,8 @@ python3 scripts/check_human_observations.py \
   --generated-dir generated \
   --report-out docs/observation-status-2026-03-08.md \
   --report-json-out docs/observation-status-2026-03-08.json \
-  --batch-size 10
+  --batch-size 10 \
+  --batch-family-cap 2
 ```
 
 ### 基本4候補

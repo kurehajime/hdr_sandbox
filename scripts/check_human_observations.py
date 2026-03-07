@@ -199,6 +199,42 @@ def order_pending_rows(pending_rows: list[dict[str, str]]) -> list[dict[str, str
     )
 
 
+def apply_family_cap(
+    ordered_rows: list[dict[str, str]],
+    *,
+    batch_size: int,
+    family_cap: int,
+) -> list[dict[str, str]]:
+    """priority順を保ちつつ、同一familyの過密を抑える。"""
+    if batch_size <= 0:
+        return []
+    if family_cap <= 0:
+        return ordered_rows[:batch_size]
+
+    out: list[dict[str, str]] = []
+    delayed: list[dict[str, str]] = []
+    counts: Counter[str] = Counter()
+
+    for row in ordered_rows:
+        family = infer_family(row["candidate"])
+        if counts[family] < family_cap:
+            out.append(row)
+            counts[family] += 1
+        else:
+            delayed.append(row)
+
+        if len(out) >= batch_size:
+            return out
+
+    # cap適用後に枠が余ったら、優先順のまま補充する。
+    for row in delayed:
+        out.append(row)
+        if len(out) >= batch_size:
+            break
+
+    return out
+
+
 def build_diversified_batch(
     pending_rows: list[dict[str, str]],
     *,
@@ -300,8 +336,14 @@ def build_structured_report(
     conflicts: list[dict[str, object]],
     retry_candidates: list[dict[str, object]],
     batch_size: int,
+    batch_family_cap: int,
 ) -> dict[str, object]:
     ordered_pending = order_pending_rows(pending_rows)
+    capped_priority_batch = apply_family_cap(
+        ordered_pending,
+        batch_size=batch_size,
+        family_cap=batch_family_cap,
+    )
     diversified_batch = build_diversified_batch(pending_rows, batch_size=batch_size)
 
     glow_control = pick_control(
@@ -358,7 +400,8 @@ def build_structured_report(
                 "glow": simplify_row(glow_control) if glow_control else None,
                 "not_glow": simplify_row(not_glow_control) if not_glow_control else None,
             },
-            "priority": [simplify_row(r) for r in ordered_pending[:batch_size]],
+            "priority": [simplify_row(r) for r in capped_priority_batch],
+            "priority_family_cap": batch_family_cap,
             "diversified_round_robin": [simplify_row(r) for r in diversified_batch],
             "cicp_focus": [
                 simplify_row(r)
@@ -379,8 +422,14 @@ def build_report(
     conflicts: list[dict[str, object]],
     retry_candidates: list[dict[str, object]],
     batch_size: int,
+    batch_family_cap: int,
 ) -> str:
     ordered_pending = order_pending_rows(pending_rows)
+    capped_priority_batch = apply_family_cap(
+        ordered_pending,
+        batch_size=batch_size,
+        family_cap=batch_family_cap,
+    )
     diversified_batch = build_diversified_batch(pending_rows, batch_size=batch_size)
 
     by_family: dict[str, list[dict[str, str]]] = defaultdict(list)
@@ -493,9 +542,15 @@ def build_report(
 
     lines.append(f"### 1) 次バッチ候補（最大 {batch_size} 件）")
     lines.append("")
-    lines.append("選定順: 未観測(todo/TODO) → 再試行(whiteout/blackout/mixed) → URL補完のみ")
+    if batch_family_cap > 0:
+        lines.append(
+            "選定順: 未観測(todo/TODO) → 再試行(whiteout/blackout/mixed) → URL補完のみ"
+            f"（同一family上限={batch_family_cap}）"
+        )
+    else:
+        lines.append("選定順: 未観測(todo/TODO) → 再試行(whiteout/blackout/mixed) → URL補完のみ")
     lines.append("")
-    for r in ordered_pending[:batch_size]:
+    for r in capped_priority_batch:
         lines.append(
             f"- `{r['file']}` ({r['candidate']} / observed={r['observed']} / url={r['x_post_url']})"
         )
@@ -503,7 +558,7 @@ def build_report(
         lines.append("- pending候補はありません")
     lines.append("")
 
-    priority_batch = [r["candidate"] for r in ordered_pending[:batch_size]]
+    priority_batch = [r["candidate"] for r in capped_priority_batch]
     diversified_names = [r["candidate"] for r in diversified_batch]
     if diversified_batch and diversified_names != priority_batch:
         lines.append(f"### 1b) 次バッチ候補（多様性重視・family round-robin / 最大 {batch_size} 件）")
@@ -568,6 +623,12 @@ def main() -> None:
     )
     ap.add_argument("--batch-size", type=int, default=8, help="レポート内の次バッチ候補の最大件数")
     ap.add_argument(
+        "--batch-family-cap",
+        type=int,
+        default=0,
+        help="次バッチ候補で同一familyに割り当てる最大件数（0で無制限）",
+    )
+    ap.add_argument(
         "--strict-pending",
         action="store_true",
         help="pending(todo/TODO URL) が1件でもあれば終了コード2を返す",
@@ -581,6 +642,8 @@ def main() -> None:
 
     if args.batch_size <= 0:
         raise SystemExit("ERROR: --batch-size must be > 0")
+    if args.batch_family_cap < 0:
+        raise SystemExit("ERROR: --batch-family-cap must be >= 0")
 
     obs_path = Path(args.observations)
     gen_dir = Path(args.generated_dir)
@@ -704,6 +767,7 @@ def main() -> None:
             conflicts,
             retry_candidates,
             batch_size=args.batch_size,
+            batch_family_cap=args.batch_family_cap,
         )
         out = Path(args.report_out)
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -721,6 +785,7 @@ def main() -> None:
             conflicts=conflicts,
             retry_candidates=retry_candidates,
             batch_size=args.batch_size,
+            batch_family_cap=args.batch_family_cap,
         )
         out_json = Path(args.report_json_out)
         out_json.parent.mkdir(parents=True, exist_ok=True)

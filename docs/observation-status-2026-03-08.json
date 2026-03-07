@@ -317,34 +317,6 @@
         "family": "cicp"
       },
       {
-        "candidate": "probe_cicp_bt2020_pq_matrix_1",
-        "file": "candidate_probe_cicp_bt2020_pq_matrix_1.png",
-        "observed": "todo",
-        "x_post_url": "TODO",
-        "family": "cicp"
-      },
-      {
-        "candidate": "probe_cicp_bt2020_srgb",
-        "file": "candidate_probe_cicp_bt2020_srgb.png",
-        "observed": "todo",
-        "x_post_url": "TODO",
-        "family": "cicp"
-      },
-      {
-        "candidate": "probe_cicp_bt709_pq",
-        "file": "candidate_probe_cicp_bt709_pq.png",
-        "observed": "todo",
-        "x_post_url": "TODO",
-        "family": "cicp"
-      },
-      {
-        "candidate": "probe_cicp_bt709_srgb",
-        "file": "candidate_probe_cicp_bt709_srgb.png",
-        "observed": "todo",
-        "x_post_url": "TODO",
-        "family": "cicp"
-      },
-      {
         "candidate": "probe_isoeff_triplet",
         "file": "candidate_probe_isoeff_triplet.png",
         "observed": "todo",
@@ -366,13 +338,42 @@
         "family": "alpha"
       },
       {
-        "candidate": "probe_alpha_gradient_rl",
-        "file": "candidate_probe_alpha_gradient_rl.png",
+        "candidate": "probe_luma_ladder_alpha255",
+        "file": "candidate_probe_luma_ladder_alpha255.png",
         "observed": "todo",
         "x_post_url": "TODO",
-        "family": "alpha"
+        "family": "luma"
+      },
+      {
+        "candidate": "probe_luma_ladder_alpha64",
+        "file": "candidate_probe_luma_ladder_alpha64.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "luma"
+      },
+      {
+        "candidate": "probe_size_512_alpha255_bright_patch",
+        "file": "candidate_probe_size_512_alpha255_bright_patch.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "size"
+      },
+      {
+        "candidate": "probe_size_512",
+        "file": "candidate_probe_size_512.png",
+        "observed": "whiteout",
+        "x_post_url": "TODO",
+        "family": "size"
+      },
+      {
+        "candidate": "probe_cicp_bt2020_pq_matrix_1",
+        "file": "candidate_probe_cicp_bt2020_pq_matrix_1.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "cicp"
       }
     ],
+    "priority_family_cap": 2,
     "diversified_round_robin": [
       {
         "candidate": "probe_cicp_bt2020_pq",
