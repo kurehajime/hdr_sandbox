@@ -10,6 +10,11 @@
 - mapping_conflicts_file: 0
 - url_conflicts: 0
 - duplicate_rows: 0
+- forbidden_observation_entries: 5
+
+## Forbidden observation source files
+
+- `docs/hypothesis-update-2026-03-07.md`
 
 ## Family progress (latest per candidate)
 
@@ -37,6 +42,18 @@
 | `probe_alpha_gradient` | `candidate_probe_alpha_gradient.png` | `mixed` | 1 | https://x.com/kurehajime/status/2030244873153175737 |
 | `probe_size_512` | `candidate_probe_size_512.png` | `whiteout` | 1 | TODO |
 | `probe_size_512_nontransparent` | `candidate_probe_size_512_nontransparent.png` | `blackout` | 1 | TODO |
+
+## Forbidden observation entries (should move to docs/human-observations*.md)
+
+`docs/hypothesis-update-*.md` 等の禁止ソースに、人間観測らしき記述（表行 or X投稿URL）が見つかった。
+
+| source | kind | evidence |
+|---|---|---|
+| `docs/hypothesis-update-2026-03-07.md#22` | `x_status_url` | `https://x.com/kurehajime/status/2030240958701568112` |
+| `docs/hypothesis-update-2026-03-07.md#25` | `x_status_url` | `https://x.com/kurehajime/status/2030241207994159531` |
+| `docs/hypothesis-update-2026-03-07.md#34` | `x_status_url` | `https://x.com/kurehajime/status/2030244873153175737` |
+| `docs/hypothesis-update-2026-03-07.md#121` | `x_status_url` | `https://x.com/kurehajime/status/2030265404149604611` |
+| `docs/hypothesis-update-2026-03-07.md#162` | `x_status_url` | `https://x.com/kurehajime/status/2030279978156515406` |
 
 ## Pending candidates (needs X posting / result entry)
 

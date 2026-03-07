@@ -102,6 +102,12 @@ python3 scripts/check_human_observations.py \
 
 自動読込を止めたい場合は `--no-default-extra-observations` を付与する。
 
+また、誤って `docs/hypothesis-update-*.md` に観測結果を書いてしまったケースを検出するため、
+`--observations docs/human-observations.md` の場合は既定で `hypothesis-update-*.md` も走査する。
+
+- 追加走査先を増やす: `--forbid-observation-in-glob '任意パターン.md'`
+- 既定走査を無効化する: `--no-default-forbidden-observation-sources`
+
 ### 4) 未観測候補のレポート生成（次の投稿計画）
 
 ```bash
@@ -125,6 +131,7 @@ python3 scripts/check_human_observations.py \
 - `mapping_conflicts_file`: 同一fileを複数candidateが参照する件数（file→candidate 不整合）
 - `url_conflicts`: 同一 `x_post_url` が複数candidate/fileに紐づく件数（URL帰属不整合）
 - `duplicate_rows`: candidate/file/observed/url が一致する重複行の件数（主表とextraの二重登録検出）
+- `forbidden_observation_entries`: 禁止ソース（既定: `docs/hypothesis-update-*.md`）にある観測らしき記述（表行/X投稿URL）件数
 - `observation_files`: チェック時に読み込んだ観測ファイル一覧（複数ファイル運用の確認用）
 - `family_progress_latest`: candidate最新状態を family 別に集計（resolved/uncertain/todo_or_url_todo/completion）
 - `--report-json-out`: pending/retry/conflict/推奨バッチをJSONで出力（自動投稿フロー連携用）
@@ -144,6 +151,7 @@ python3 scripts/check_human_observations.py \
 - `--strict-mapping` を付けると candidate↔file 対応の不整合（1対多/多対1）が1件でも終了コード2
 - `--strict-url-mapping` を付けると `x_post_url` の帰属不整合（同一URLが複数candidate/fileに紐づく）が1件でも終了コード2
 - `--strict-duplicate-rows` を付けると同一観測行の重複（candidate/file/observed/url一致）が1件でも終了コード2
+- `--strict-forbidden-observation-source` を付けると禁止ソース（既定: `docs/hypothesis-update-*.md`）に観測らしき記述が1件でも終了コード2
 
 詳細は `docs/reproduction-candidates.md` / `docs/human-observations.md` /
 `docs/human-observations-extra.md` を参照。

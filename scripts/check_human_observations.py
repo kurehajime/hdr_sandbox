@@ -17,6 +17,7 @@ RESOLVED_OBSERVED = {"glows", "not_glows"}
 UNCERTAIN_LATEST_OBSERVED = NON_DECISIVE_OBSERVED.union({"mixed"})
 FAMILY_PRIORITY = ["cicp", "threshold", "isoeff", "alpha", "position", "luma", "size", "probe_other", "success", "fail", "other"]
 DEFAULT_EXTRA_OBSERVATIONS_GLOB = "human-observations-*.md"
+DEFAULT_FORBIDDEN_OBSERVATION_GLOB = "hypothesis-update-*.md"
 
 
 def parse_rows(md: str, *, source_file: Path) -> list[dict[str, object]]:
@@ -113,6 +114,69 @@ def resolve_observation_paths(
                 paths.append(p)
 
     return paths
+
+
+def resolve_forbidden_observation_paths(
+    primary: Path,
+    globs: list[str],
+    *,
+    include_default_forbidden: bool,
+) -> list[Path]:
+    root = primary.parent
+    paths: list[Path] = []
+
+    effective_globs = list(globs)
+    if include_default_forbidden and primary.name == "human-observations.md":
+        effective_globs.append(DEFAULT_FORBIDDEN_OBSERVATION_GLOB)
+
+    for pattern in effective_globs:
+        matched = sorted(root.glob(pattern))
+        if not matched:
+            raise SystemExit(
+                f"ERROR: no files matched --forbid-observation-in-glob pattern '{pattern}' under {root}"
+            )
+        for p in matched:
+            if p not in paths:
+                paths.append(p)
+
+    return paths
+
+
+def find_forbidden_observation_entries(paths: list[Path]) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    url_re = re.compile(r"https?://x\.com/[^/\s]+/status/\d+")
+
+    for p in paths:
+        for line_no, line in enumerate(p.read_text(encoding="utf-8").splitlines(), start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+
+            if stripped.startswith("|"):
+                cols = [c.strip() for c in stripped.strip("|").split("|")]
+                if len(cols) == 5 and cols[0] not in {"candidate", "---"}:
+                    rows.append(
+                        {
+                            "source_file": str(p),
+                            "source_line": line_no,
+                            "kind": "table_row",
+                            "line": stripped,
+                        }
+                    )
+                    continue
+
+            m = url_re.search(stripped)
+            if m:
+                rows.append(
+                    {
+                        "source_file": str(p),
+                        "source_line": line_no,
+                        "kind": "x_status_url",
+                        "line": m.group(0),
+                    }
+                )
+
+    return rows
 
 
 def load_rows(obs_paths: list[Path]) -> list[dict[str, object]]:
@@ -509,6 +573,8 @@ def simplify_row(row: dict[str, object]) -> dict[str, object]:
 def build_structured_report(
     *,
     obs_paths: list[Path],
+    forbidden_obs_paths: list[Path],
+    forbidden_observation_entries: list[dict[str, object]],
     rows: list[dict[str, str]],
     pending_rows: list[dict[str, str]],
     missing_in_table: set[str],
@@ -546,6 +612,7 @@ def build_structured_report(
     return {
         "summary": {
             "observation_files": [str(p) for p in obs_paths],
+            "forbidden_observation_source_files": [str(p) for p in forbidden_obs_paths],
             "total_rows": len(rows),
             "unique_candidates": len(per_candidate),
             "pending_rows": len(pending_rows),
@@ -556,6 +623,7 @@ def build_structured_report(
             "mapping_conflicts_file": len(mapping_conflicts_file),
             "url_conflicts": len(url_conflicts),
             "duplicate_rows": len(duplicate_rows),
+            "forbidden_observation_entries": len(forbidden_observation_entries),
         },
         "family_progress": [
             {
@@ -591,6 +659,7 @@ def build_structured_report(
         },
         "url_conflicts": url_conflicts,
         "duplicate_rows": duplicate_rows,
+        "forbidden_observation_entries": forbidden_observation_entries,
         "suggested_batches": {
             "controls": {
                 "glow": simplify_row(glow_control) if glow_control else None,
@@ -745,6 +814,8 @@ def build_report(
     mapping_conflicts_file: list[dict[str, object]],
     url_conflicts: list[dict[str, object]],
     duplicate_rows: list[dict[str, object]],
+    forbidden_obs_paths: list[Path],
+    forbidden_observation_entries: list[dict[str, object]],
     batch_size: int,
     batch_family_cap: int,
 ) -> str:
@@ -785,7 +856,15 @@ def build_report(
     lines.append(f"- mapping_conflicts_file: {len(mapping_conflicts_file)}")
     lines.append(f"- url_conflicts: {len(url_conflicts)}")
     lines.append(f"- duplicate_rows: {len(duplicate_rows)}")
+    lines.append(f"- forbidden_observation_entries: {len(forbidden_observation_entries)}")
     lines.append("")
+
+    if forbidden_obs_paths:
+        lines.append("## Forbidden observation source files")
+        lines.append("")
+        for p in forbidden_obs_paths:
+            lines.append(f"- `{p}`")
+        lines.append("")
 
     if family_progress:
         lines.append("## Family progress (latest per candidate)")
@@ -878,6 +957,20 @@ def build_report(
             )
             lines.append(
                 f"| `{ent['candidate']}` | `{ent['file']}` | `{ent['observed']}` | {ent['x_post_url']} | {ent['count']} | {sources} |"
+            )
+        lines.append("")
+
+    if forbidden_observation_entries:
+        lines.append("## Forbidden observation entries (should move to docs/human-observations*.md)")
+        lines.append("")
+        lines.append("`docs/hypothesis-update-*.md` 等の禁止ソースに、人間観測らしき記述（表行 or X投稿URL）が見つかった。")
+        lines.append("")
+        lines.append("| source | kind | evidence |")
+        lines.append("|---|---|---|")
+        for ent in forbidden_observation_entries:
+            source = f"`{ent['source_file']}#{ent['source_line']}`"
+            lines.append(
+                f"| {source} | `{ent['kind']}` | `{ent['line']}` |"
             )
         lines.append("")
 
@@ -1010,6 +1103,24 @@ def main() -> None:
             f" '{DEFAULT_EXTRA_OBSERVATIONS_GLOB}' 読み込みを無効化する"
         ),
     )
+    ap.add_argument(
+        "--forbid-observation-in-glob",
+        action="append",
+        default=[],
+        help=(
+            "人間観測の追記を禁止するファイルglob。"
+            " --observations の親ディレクトリ配下で解決される"
+            " (例: --forbid-observation-in-glob 'hypothesis-update-*.md')"
+        ),
+    )
+    ap.add_argument(
+        "--no-default-forbidden-observation-sources",
+        action="store_true",
+        help=(
+            "--observations が docs/human-observations.md の場合に自動追加される"
+            f" '{DEFAULT_FORBIDDEN_OBSERVATION_GLOB}' の禁止ソースチェックを無効化する"
+        ),
+    )
     ap.add_argument("--generated-dir", default="generated")
     ap.add_argument("--report-out", help="未観測候補のMarkdownレポート出力先")
     ap.add_argument(
@@ -1068,6 +1179,14 @@ def main() -> None:
         action="store_true",
         help="同一観測行の重複（candidate/file/observed/url一致）があれば終了コード2を返す",
     )
+    ap.add_argument(
+        "--strict-forbidden-observation-source",
+        action="store_true",
+        help=(
+            "禁止ソース（既定: docs/hypothesis-update-*.md）に"
+            "人間観測らしき記述（表行/X投稿URL）があれば終了コード2を返す"
+        ),
+    )
     args = ap.parse_args()
 
     if args.batch_size <= 0:
@@ -1086,6 +1205,13 @@ def main() -> None:
         args.observations_glob,
         include_default_extra=not args.no_default_extra_observations,
     )
+    forbidden_obs_paths = resolve_forbidden_observation_paths(
+        obs_path,
+        args.forbid_observation_in_glob,
+        include_default_forbidden=not args.no_default_forbidden_observation_sources,
+    )
+    forbidden_observation_entries = find_forbidden_observation_entries(forbidden_obs_paths)
+
     rows = load_rows(obs_paths)
     if not rows:
         raise SystemExit("ERROR: table rows not found in observations file(s)")
@@ -1136,6 +1262,18 @@ def main() -> None:
     print(f"observation_files: {len(obs_paths)}")
     for p in obs_paths:
         print(f"- {p}")
+
+    print(f"forbidden_observation_source_files: {len(forbidden_obs_paths)}")
+    for p in forbidden_obs_paths:
+        print(f"- {p}")
+
+    print(f"forbidden_observation_entries: {len(forbidden_observation_entries)}")
+    if forbidden_observation_entries:
+        print("forbidden_observation_entries_list:")
+        for ent in forbidden_observation_entries:
+            print(
+                f"- {ent['source_file']}#{ent['source_line']} ({ent['kind']} / {ent['line']})"
+            )
 
     print(f"rows: {len(rows)}")
     print(f"unique_candidates: {len(per_candidate)}")
@@ -1237,6 +1375,8 @@ def main() -> None:
             mapping_conflicts_file,
             url_conflicts,
             duplicate_rows,
+            forbidden_obs_paths,
+            forbidden_observation_entries,
             batch_size=args.batch_size,
             batch_family_cap=args.batch_family_cap,
         )
@@ -1248,6 +1388,8 @@ def main() -> None:
     if args.report_json_out:
         report_json = build_structured_report(
             obs_paths=obs_paths,
+            forbidden_obs_paths=forbidden_obs_paths,
+            forbidden_observation_entries=forbidden_observation_entries,
             rows=rows,
             pending_rows=pending_rows,
             missing_in_table=missing_in_table,
@@ -1303,6 +1445,9 @@ def main() -> None:
         raise SystemExit(2)
 
     if args.strict_duplicate_rows and duplicate_rows:
+        raise SystemExit(2)
+
+    if args.strict_forbidden_observation_source and forbidden_observation_entries:
         raise SystemExit(2)
 
     print("OK")

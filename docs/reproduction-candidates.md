@@ -1,6 +1,6 @@
-# success_sample.png 再現候補の生成手順（第26版）
+# success_sample.png 再現候補の生成手順（第27版）
 
-更新日: 2026-03-08 (v26: 同一観測行の重複検出を追加)
+更新日: 2026-03-08 (v27: 禁止ソースへの観測追記検出を追加)
 
 ## 目的
 
@@ -131,6 +131,15 @@ python3 scripts/check_human_observations.py \
   - `--strict-url-mapping` で URL帰属不整合をCI失敗扱いにできる
   - `duplicate_rows`（candidate/file/observed/url が一致する重複行）を検出
   - `--strict-duplicate-rows` で重複行をCI失敗扱いにできる
+  - `forbidden_observation_entries`（禁止ソース: 既定 `docs/hypothesis-update-*.md` に残った観測らしき記述）を検出
+  - `--forbid-observation-in-glob` で禁止ソースの追加パターンを指定可能
+  - `--no-default-forbidden-observation-sources` で既定禁止ソース走査を無効化可能
+  - `--strict-forbidden-observation-source` で禁止ソース検出をCI失敗扱いにできる
+- 2026-03-08 v27 追加:
+  - `forbidden_observation_entries` を追加（`docs/hypothesis-update-*.md` など禁止ソース内の観測表行/X投稿URLを検出）
+  - `--forbid-observation-in-glob` / `--no-default-forbidden-observation-sources` を追加し、禁止ソース走査の対象を制御可能化
+  - `--strict-forbidden-observation-source` を追加（禁止ソースへの観測残存をCIで即検出）
+  - Markdown/JSONレポートに `forbidden_observation_entries` を出力
 - 2026-03-08 v26 追加:
   - `duplicate_rows` を追加（candidate/file/observed/url が一致する重複行を検出）
   - 重複行の `source_file#source_line` をレポート表示し、主表+extraの二重登録を即修正しやすくした
@@ -175,10 +184,12 @@ python3 scripts/check_human_observations.py \
   --checklist-include-targeted-followups \
   --batch-size 10 \
   --batch-family-cap 2 \
+  --forbid-observation-in-glob 'hypothesis-update-*.md' \
   --strict-retry \
   --strict-mapping \
   --strict-url-mapping \
-  --strict-duplicate-rows
+  --strict-duplicate-rows \
+  --strict-forbidden-observation-source
 ```
 
 ### 基本4候補
