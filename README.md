@@ -52,11 +52,14 @@ python3 scripts/make_candidates.py \
 - `generated/candidate_probe_alpha_gradient.png`
 - `generated/candidate_probe_alpha_lr_split_16_64.png`
 - `generated/candidate_probe_alpha_ladder_1_255.png`
+- `generated/candidate_probe_luma_ladder_alpha255.png`
+- `generated/candidate_probe_luma_ladder_alpha64.png`
 - `generated/candidate_probe_size_512.png`
 - `generated/candidate_probe_size_512_nontransparent.png`
 - `generated/candidate_probe_size_512_alpha255_bright_patch.png`
 - `generated/comparison.md`（比較表）
 - `generated/alpha_ladder_spec.md`（alpha段階のlane対応表）
+- `generated/luma_ladder_spec.md`（RGB段階と実効輝度のlane対応表）
 
 詳細は `docs/reproduction-candidates.md` と
 `docs/hypothesis-update-2026-03-07.md` を参照。

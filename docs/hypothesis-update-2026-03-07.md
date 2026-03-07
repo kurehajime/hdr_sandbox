@@ -90,6 +90,12 @@
 - `candidate_probe_size_512_alpha255_bright_patch.png`
   - 512x512 + alpha=255固定 + 右側に高輝度パッチ
   - 512黒化が「全体輝度不足」か「メタデータ経路問題」かを切り分け
+- `candidate_probe_luma_ladder_alpha255.png`
+  - alpha=255固定でRGB(16bit)を段階化した縦バー
+  - 「透明度要因を除いた実効輝度しきい値」を観測する
+- `candidate_probe_luma_ladder_alpha64.png`
+  - alpha=64固定でRGB(16bit)を段階化した縦バー
+  - alphaを下げたときに、しきい値laneがどれだけ右にずれるかを観測する
 
 ## 6. 当面の運用ルール
 

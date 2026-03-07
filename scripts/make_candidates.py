@@ -192,6 +192,7 @@ def _resize_like(arr: np.ndarray, size: tuple[int, int]) -> np.ndarray:
 
 
 ALPHA_LADDER_VALUES = [1, 2, 4, 8, 16, 24, 32, 48, 64, 96, 128, 192, 255]
+LUMA_LADDER_VALUES = [512, 1024, 2048, 4096, 8192, 16384, 24576, 32768, 49152, 65535]
 
 
 def _make_lr_split_pattern(*, width: int = 400, height: int = 400) -> np.ndarray:
@@ -250,6 +251,44 @@ def _make_alpha_ladder_pattern(
         arr[y0:y1, x0:x1, 3] = np.uint16(a8 * 257)
 
         # 境界視認性のため縦セパレータを挿入
+        if x0 > 0:
+            arr[:, x0 - 1 : x0 + 1, :3] = 0
+            arr[:, x0 - 1 : x0 + 1, 3] = 65535
+
+    return arr
+
+
+def _make_luma_ladder_pattern(
+    *,
+    width: int = 400,
+    height: int = 400,
+    alpha_8bit: int,
+    luma_values: list[int] | None = None,
+) -> np.ndarray:
+    """縦バーごとにRGB(16bit)を段階化し、実効輝度しきい値を観測する。"""
+    values = LUMA_LADDER_VALUES if luma_values is None else luma_values
+    if not values:
+        raise ValueError("luma_values must not be empty")
+
+    arr = np.zeros((height, width, 4), dtype=np.uint16)
+    arr[:, :, :3] = 1024
+    arr[:, :, 3] = 65535
+
+    y0 = height // 4
+    y1 = (height * 3) // 4
+    n = len(values)
+    alpha_16 = np.uint16(max(0, min(255, alpha_8bit)) * 257)
+
+    for i, l16 in enumerate(values):
+        x0 = (i * width) // n
+        x1 = ((i + 1) * width) // n
+
+        lv = np.uint16(max(0, min(65535, l16)))
+        arr[y0:y1, x0:x1, 0] = lv
+        arr[y0:y1, x0:x1, 1] = lv
+        arr[y0:y1, x0:x1, 2] = lv
+        arr[y0:y1, x0:x1, 3] = alpha_16
+
         if x0 > 0:
             arr[:, x0 - 1 : x0 + 1, :3] = 0
             arr[:, x0 - 1 : x0 + 1, 3] = 65535
@@ -343,6 +382,8 @@ def build_candidates(
 
         arr16_lr_split = _make_lr_split_pattern(width=400, height=400)
         arr16_alpha_ladder = _make_alpha_ladder_pattern(width=400, height=400)
+        arr16_luma_ladder_alpha255 = _make_luma_ladder_pattern(width=400, height=400, alpha_8bit=255)
+        arr16_luma_ladder_alpha64 = _make_luma_ladder_pattern(width=400, height=400, alpha_8bit=64)
 
         targets.extend(
             [
@@ -414,6 +455,22 @@ def build_candidates(
                     "probe_alpha_ladder_1_255",
                     outdir / "candidate_probe_alpha_ladder_1_255.png",
                     arr16_alpha_ladder,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
+                    "probe_luma_ladder_alpha255",
+                    outdir / "candidate_probe_luma_ladder_alpha255.png",
+                    arr16_luma_ladder_alpha255,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
+                    "probe_luma_ladder_alpha64",
+                    outdir / "candidate_probe_luma_ladder_alpha64.png",
+                    arr16_luma_ladder_alpha64,
                     16,
                     6,
                     icc_success,
@@ -491,6 +548,29 @@ def build_candidates(
         )
         (outdir / "alpha_ladder_spec.md").write_text("\n".join(ladder_lines), encoding="utf-8")
 
+        luma_lines = [
+            "# Luma Ladder Spec (auto-generated)",
+            "",
+            "`candidate_probe_luma_ladder_alpha255.png` と `candidate_probe_luma_ladder_alpha64.png` の中央帯は左→右で以下の RGB(16bit) を使用:",
+            "",
+            "| lane | rgb_16bit | normalized | effective(alpha=255) | effective(alpha=64) |",
+            "|---:|---:|---:|---:|---:|",
+        ]
+        for i, l16 in enumerate(LUMA_LADDER_VALUES, start=1):
+            norm = l16 / 65535
+            luma_lines.append(
+                f"| {i} | {l16} | {norm:.4f} | {norm * 1.0:.4f} | {norm * (64 / 255):.4f} |"
+            )
+        luma_lines.extend(
+            [
+                "",
+                "観測ポイント:",
+                "- alpha固定時に、どのlaneから『光って見える』か（実効輝度しきい値）",
+                "- alpha=255 と alpha=64 で、しきい値laneがどれだけ右にずれるか",
+            ]
+        )
+        (outdir / "luma_ladder_spec.md").write_text("\n".join(luma_lines), encoding="utf-8")
+
     return results
 
 
@@ -530,6 +610,7 @@ def write_report(results: list[CandidateResult], path: Path, *, extended: bool) 
                 "- `probe_alpha_gradient`: alphaを1..65535で連続変化（alpha依存の境界を観測）",
                 "- `probe_alpha_lr_split_16_64`: 左右分割（左alpha=16 / 右alpha=64）で見え方を即比較",
                 "- `probe_alpha_ladder_1_255`: alpha段階(1..255)の縦バーで発光しきい値の概算を1枚で観測",
+                "- `probe_luma_ladder_alpha255` / `probe_luma_ladder_alpha64`: RGB段階バー（alpha固定）で実効輝度しきい値を探索",
                 "- `probe_size_512`: 512化のみ（従来観測の再確認）",
                 "- `probe_size_512_nontransparent`: 512 + alpha=255固定（サイズ要因と透明要因の切り分け）",
                 "- `probe_size_512_alpha255_bright_patch`: 512 + alpha=255 + 右側高輝度パッチ（実効輝度しきい値を確認）",
