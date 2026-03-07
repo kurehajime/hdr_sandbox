@@ -98,6 +98,7 @@ python3 scripts/check_human_observations.py \
 ```bash
 python3 scripts/check_human_observations.py \
   --observations docs/human-observations.md \
+  --observations-glob 'human-observations-*.md' \
   --generated-dir generated \
   --report-out docs/observation-status-YYYY-MM-DD.md \
   --batch-size 10
@@ -108,9 +109,11 @@ python3 scripts/check_human_observations.py \
 - `retry_candidates`: 最新観測が `whiteout/blackout/mixed` の再検証候補数
 - `missing_in_table`: generatedに存在するが観測表に未登録の候補数
 - `observation_files`: チェック時に読み込んだ観測ファイル一覧（複数ファイル運用の確認用）
+- `family_progress_latest`: candidate最新状態を family 別に集計（resolved/uncertain/todo_or_url_todo/completion）
 - レポートの `Suggested immediate batch` で、
   - 端末状態確認用コントロール（glow / not_glow）
-  - 優先順つきの次バッチ候補（`--batch-size`件）
+  - 状態優先（未観測todo → 再試行whiteout/blackout/mixed → URL補完）+ 系統優先つきの次バッチ候補（`--batch-size`件）
+  - 同一family連投を避ける `1b) 多様性重視バッチ`（round-robin）
   を自動提案
 - `--strict-pending` を付けると pending が1件でも終了コード2
 - `--strict-conflict` を付けると decisive観測の衝突が1件でも終了コード2

@@ -12,6 +12,8 @@ from pathlib import Path
 VALID_OBSERVED = {"glows", "not_glows", "whiteout", "blackout", "mixed", "todo"}
 DECISIVE_OBSERVED = {"glows", "not_glows", "mixed"}
 NON_DECISIVE_OBSERVED = {"whiteout", "blackout"}
+RESOLVED_OBSERVED = {"glows", "not_glows"}
+UNCERTAIN_LATEST_OBSERVED = NON_DECISIVE_OBSERVED.union({"mixed"})
 FAMILY_PRIORITY = ["cicp", "threshold", "isoeff", "alpha", "luma", "size", "probe_other", "success", "fail", "other"]
 
 
@@ -158,11 +160,110 @@ def pick_control(
     return matched[0]
 
 
+def pending_state_rank(row: dict[str, str]) -> int:
+    """次バッチ候補の状態優先度。
+
+    0: 完全未観測（observed=todo かつ URL=TODO）
+    1: 再試行（whiteout/blackout/mixed）
+    2: それ以外の pending（主に URL 未反映）
+    """
+    observed = row["observed"]
+    url_todo = row["x_post_url"].upper() == "TODO"
+
+    if observed == "todo" and url_todo:
+        return 0
+    if observed in UNCERTAIN_LATEST_OBSERVED:
+        return 1
+    return 2
+
+
 def order_pending_rows(pending_rows: list[dict[str, str]]) -> list[dict[str, str]]:
     return sorted(
         pending_rows,
-        key=lambda r: (family_rank(r["candidate"]), r["candidate"]),
+        key=lambda r: (
+            pending_state_rank(r),
+            family_rank(r["candidate"]),
+            r["candidate"],
+        ),
     )
+
+
+def build_diversified_batch(
+    pending_rows: list[dict[str, str]],
+    *,
+    batch_size: int,
+) -> list[dict[str, str]]:
+    """familyごとにround-robinで候補を選び、多様性を確保する。"""
+    if batch_size <= 0:
+        return []
+
+    ordered = order_pending_rows(pending_rows)
+    by_family: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for row in ordered:
+        by_family[infer_family(row["candidate"])].append(row)
+
+    families = [fam for fam in FAMILY_PRIORITY if by_family.get(fam)]
+    extra_families = sorted(set(by_family.keys()) - set(families))
+    families.extend(extra_families)
+
+    out: list[dict[str, str]] = []
+    while len(out) < batch_size:
+        moved = False
+        for fam in families:
+            rows = by_family[fam]
+            if not rows:
+                continue
+            out.append(rows.pop(0))
+            moved = True
+            if len(out) >= batch_size:
+                break
+        if not moved:
+            break
+
+    return out
+
+
+def summarize_family_progress(
+    per_candidate: dict[str, dict[str, object]],
+) -> list[dict[str, object]]:
+    """各familyの最新進捗（candidate単位）を集約する。"""
+    progress: dict[str, dict[str, object]] = {}
+
+    for entry in per_candidate.values():
+        candidate = str(entry["candidate"])
+        family = infer_family(candidate)
+        observed = str(entry["latest_observed"])
+        latest_url = str(entry["latest_url"])
+        url_todo = latest_url.upper() == "TODO"
+
+        fam = progress.setdefault(
+            family,
+            {
+                "family": family,
+                "total": 0,
+                "resolved": 0,
+                "uncertain": 0,
+                "todo_or_url_todo": 0,
+            },
+        )
+
+        fam["total"] = int(fam["total"]) + 1
+
+        if observed in RESOLVED_OBSERVED and not url_todo:
+            fam["resolved"] = int(fam["resolved"]) + 1
+        if observed in UNCERTAIN_LATEST_OBSERVED:
+            fam["uncertain"] = int(fam["uncertain"]) + 1
+        if observed == "todo" or url_todo:
+            fam["todo_or_url_todo"] = int(fam["todo_or_url_todo"]) + 1
+
+    ordered_families = sorted(
+        progress,
+        key=lambda fam: (
+            FAMILY_PRIORITY.index(fam) if fam in FAMILY_PRIORITY else len(FAMILY_PRIORITY),
+            fam,
+        ),
+    )
+    return [progress[fam] for fam in ordered_families]
 
 
 def build_report(
@@ -170,11 +271,13 @@ def build_report(
     pending_rows: list[dict[str, str]],
     missing_in_table: set[str],
     per_candidate: dict[str, dict[str, object]],
+    family_progress: list[dict[str, object]],
     conflicts: list[dict[str, object]],
     retry_candidates: list[dict[str, object]],
     batch_size: int,
 ) -> str:
     ordered_pending = order_pending_rows(pending_rows)
+    diversified_batch = build_diversified_batch(pending_rows, batch_size=batch_size)
 
     by_family: dict[str, list[dict[str, str]]] = defaultdict(list)
     for r in ordered_pending:
@@ -201,6 +304,20 @@ def build_report(
     lines.append(f"- retry_candidates: {len(retry_candidates)}")
     lines.append(f"- missing_in_table: {len(missing_in_table)}")
     lines.append("")
+
+    if family_progress:
+        lines.append("## Family progress (latest per candidate)")
+        lines.append("")
+        lines.append("| family | candidates | resolved(glows/not_glows) | uncertain(mixed/whiteout/blackout) | todo_or_url_todo | completion |")
+        lines.append("|---|---:|---:|---:|---:|---:|")
+        for fp in family_progress:
+            total = int(fp["total"])
+            resolved = int(fp["resolved"])
+            completion = (resolved / total * 100.0) if total else 0.0
+            lines.append(
+                f"| `{fp['family']}` | {total} | {resolved} | {int(fp['uncertain'])} | {int(fp['todo_or_url_todo'])} | {completion:.1f}% |"
+            )
+        lines.append("")
 
     if conflicts:
         lines.append("## Conflicting decisive observations (needs re-check)")
@@ -272,6 +389,8 @@ def build_report(
 
     lines.append(f"### 1) 次バッチ候補（最大 {batch_size} 件）")
     lines.append("")
+    lines.append("選定順: 未観測(todo/TODO) → 再試行(whiteout/blackout/mixed) → URL補完のみ")
+    lines.append("")
     for r in ordered_pending[:batch_size]:
         lines.append(
             f"- `{r['file']}` ({r['candidate']} / observed={r['observed']} / url={r['x_post_url']})"
@@ -279,6 +398,20 @@ def build_report(
     if not ordered_pending:
         lines.append("- pending候補はありません")
     lines.append("")
+
+    priority_batch = [r["candidate"] for r in ordered_pending[:batch_size]]
+    diversified_names = [r["candidate"] for r in diversified_batch]
+    if diversified_batch and diversified_names != priority_batch:
+        lines.append(f"### 1b) 次バッチ候補（多様性重視・family round-robin / 最大 {batch_size} 件）")
+        lines.append("")
+        lines.append("端末状態のドリフトを疑う場合、同一family連投を避けて候補を分散する。")
+        lines.append("")
+        for r in diversified_batch:
+            fam = infer_family(r["candidate"])
+            lines.append(
+                f"- `{r['file']}` ({r['candidate']} / family={fam} / observed={r['observed']} / url={r['x_post_url']})"
+            )
+        lines.append("")
 
     cicp = [r for r in ordered_pending if infer_family(r["candidate"]) == "cicp"]
     if cicp:
@@ -366,6 +499,7 @@ def main() -> None:
     missing_in_table = gen_candidates - obs_candidates
 
     per_candidate = summarize_candidates(rows)
+    family_progress = summarize_family_progress(per_candidate)
     conflicts = sorted(
         [
             v
@@ -378,7 +512,7 @@ def main() -> None:
         [
             v
             for v in per_candidate.values()
-            if v["latest_observed"] in NON_DECISIVE_OBSERVED.union({"mixed"})
+            if v["latest_observed"] in UNCERTAIN_LATEST_OBSERVED
         ],
         key=lambda x: str(x["candidate"]),
     )
@@ -392,6 +526,18 @@ def main() -> None:
     print("observed_counts:")
     for k, v in sorted(observed_counter.items()):
         print(f"- {k}: {v}")
+
+    print("family_progress_latest:")
+    for fp in family_progress:
+        total = int(fp["total"])
+        resolved = int(fp["resolved"])
+        completion = (resolved / total * 100.0) if total else 0.0
+        print(
+            "- "
+            f"{fp['family']}: total={total} resolved={resolved} "
+            f"uncertain={int(fp['uncertain'])} todo_or_url_todo={int(fp['todo_or_url_todo'])} "
+            f"completion={completion:.1f}%"
+        )
 
     print(f"pending_rows: {len(pending_rows)}")
     if pending_rows:
@@ -434,6 +580,7 @@ def main() -> None:
             pending_rows,
             missing_in_table,
             per_candidate,
+            family_progress,
             conflicts,
             retry_candidates,
             batch_size=args.batch_size,

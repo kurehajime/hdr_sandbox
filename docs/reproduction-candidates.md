@@ -1,6 +1,6 @@
-# success_sample.png 再現候補の生成手順（第15版）
+# success_sample.png 再現候補の生成手順（第16版）
 
-更新日: 2026-03-08 (v15: 観測ログの複数Markdown集約チェックを追加)
+更新日: 2026-03-08 (v16: family進捗可視化 + 多様性重視バッチ提案を追加)
 
 ## 目的
 
@@ -105,10 +105,13 @@ python3 scripts/check_human_observations.py \
   - `observation_files`（読み込んだ観測Markdownの一覧）を出力し、複数ファイル運用の取りこぼしを抑止
   - `conflicting_candidates`（同一candidateの decisive 観測衝突）を検出
   - `retry_candidates`（最新が whiteout/blackout/mixed）を抽出
+  - `family_progress_latest`（family別の resolved / uncertain / todo_or_url_todo / completion）をCLI出力
   - `--report-out docs/observation-status-YYYY-MM-DD.md` で次の投稿計画レポートを自動生成
+  - レポートに `Family progress` テーブルを追加し、観測完了率の低いfamilyを可視化
   - `Suggested immediate batch` に、
     - glow / not_glow の端末状態確認コントロール
-    - 優先順（cicp → threshold/isoeff → alpha/luma → その他）での次バッチ候補
+    - 状態優先（未観測todo → 再試行whiteout/blackout/mixed → URL補完）+ 系統優先（cicp → threshold/isoeff → alpha/luma → その他）での次バッチ候補
+    - 同一family連投を避ける `1b) 多様性重視バッチ`（round-robin）
     を自動挿入
   - `--batch-size N` で次バッチ候補の件数を調整可能
   - `--strict-conflict` で再現性衝突をCI失敗扱いにできる
@@ -116,6 +119,7 @@ python3 scripts/check_human_observations.py \
 ```bash
 python3 scripts/check_human_observations.py \
   --observations docs/human-observations.md \
+  --observations-glob 'human-observations-*.md' \
   --generated-dir generated \
   --report-out docs/observation-status-2026-03-08.md \
   --batch-size 10
