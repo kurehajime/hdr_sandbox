@@ -1,6 +1,6 @@
-# success_sample.png 再現候補の生成手順（第14版）
+# success_sample.png 再現候補の生成手順（第15版）
 
-更新日: 2026-03-08 (v14: 次バッチ提案にコントロール挿入 + 優先順/件数指定を追加)
+更新日: 2026-03-08 (v15: 観測ログの複数Markdown集約チェックを追加)
 
 ## 目的
 
@@ -77,8 +77,8 @@ python3 scripts/make_candidates.py \
 
 ## 人間検証結果（X投稿）
 
-- 最新の追記先: `docs/human-observations.md`
-- 運用ルール: 人間からの新規観測は `docs/hypothesis-update-2026-03-07.md` ではなく、必ず上記ファイルに追記する
+- 最新の追記先（主テーブル）: `docs/human-observations.md`
+- 運用ルール: 人間からの新規観測は `docs/hypothesis-update-2026-03-07.md` ではなく、`docs/human-observations*.md` 系に追記する
 - 人間観測から得た設計インプット（`docs/human-observations.md` 由来）:
   - `fail_no_iccp = not_glows`（iCCP/cicpの寄与を示唆）
   - `probe_alpha_gradient = mixed`（右のみ光る）
@@ -91,8 +91,18 @@ python3 scripts/check_human_observations.py \
   --generated-dir generated
 ```
 
+補助ファイル（例: `docs/human-observations-extra.md`）を併用する場合:
+
+```bash
+python3 scripts/check_human_observations.py \
+  --observations docs/human-observations.md \
+  --observations-glob 'human-observations-*.md' \
+  --generated-dir generated
+```
+
 - 2026-03-08 追加:
   - `pending_rows`（未投稿/URL未反映）と `missing_in_table`（generatedに存在するが観測表未登録）を同時に検出
+  - `observation_files`（読み込んだ観測Markdownの一覧）を出力し、複数ファイル運用の取りこぼしを抑止
   - `conflicting_candidates`（同一candidateの decisive 観測衝突）を検出
   - `retry_candidates`（最新が whiteout/blackout/mixed）を抽出
   - `--report-out docs/observation-status-YYYY-MM-DD.md` で次の投稿計画レポートを自動生成

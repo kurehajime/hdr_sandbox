@@ -81,6 +81,30 @@ def generated_candidates(gen_dir: Path) -> set[str]:
     return names
 
 
+def resolve_observation_paths(primary: Path, globs: list[str]) -> list[Path]:
+    paths = [primary]
+    root = primary.parent
+
+    for pattern in globs:
+        matched = sorted(root.glob(pattern))
+        if not matched:
+            raise SystemExit(
+                f"ERROR: no files matched --observations-glob pattern '{pattern}' under {root}"
+            )
+        for p in matched:
+            if p not in paths:
+                paths.append(p)
+
+    return paths
+
+
+def load_rows(obs_paths: list[Path]) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for p in obs_paths:
+        rows.extend(parse_rows(p.read_text(encoding="utf-8")))
+    return rows
+
+
 def summarize_candidates(rows: list[dict[str, str]]) -> dict[str, dict[str, object]]:
     summary: dict[str, dict[str, object]] = {}
     for r in rows:
@@ -281,6 +305,16 @@ def build_report(
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--observations", default="docs/human-observations.md")
+    ap.add_argument(
+        "--observations-glob",
+        action="append",
+        default=[],
+        help=(
+            "追加で読み込む観測ファイルのglobパターン。"
+            " --observations の親ディレクトリ配下で解決される"
+            " (例: --observations-glob 'human-observations-*.md')"
+        ),
+    )
     ap.add_argument("--generated-dir", default="generated")
     ap.add_argument("--report-out", help="未観測候補のMarkdownレポート出力先")
     ap.add_argument("--batch-size", type=int, default=8, help="レポート内の次バッチ候補の最大件数")
@@ -305,9 +339,10 @@ def main() -> None:
     if not obs_path.exists():
         raise SystemExit(f"ERROR: not found: {obs_path}")
 
-    rows = parse_rows(obs_path.read_text(encoding="utf-8"))
+    obs_paths = resolve_observation_paths(obs_path, args.observations_glob)
+    rows = load_rows(obs_paths)
     if not rows:
-        raise SystemExit("ERROR: table rows not found in observations file")
+        raise SystemExit("ERROR: table rows not found in observations file(s)")
 
     observed_counter = Counter()
     bad_observed: list[str] = []
@@ -347,6 +382,10 @@ def main() -> None:
         ],
         key=lambda x: str(x["candidate"]),
     )
+
+    print(f"observation_files: {len(obs_paths)}")
+    for p in obs_paths:
+        print(f"- {p}")
 
     print(f"rows: {len(rows)}")
     print(f"unique_candidates: {len(per_candidate)}")

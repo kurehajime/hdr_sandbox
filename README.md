@@ -83,6 +83,16 @@ python3 scripts/check_human_observations.py \
   --generated-dir generated
 ```
 
+人間の追記を別ファイル（例: `docs/human-observations-extra.md`）へ分ける場合は、
+`--observations-glob` で同時読込できる:
+
+```bash
+python3 scripts/check_human_observations.py \
+  --observations docs/human-observations.md \
+  --observations-glob 'human-observations-*.md' \
+  --generated-dir generated
+```
+
 ### 4) 未観測候補のレポート生成（次の投稿計画）
 
 ```bash
@@ -97,6 +107,7 @@ python3 scripts/check_human_observations.py \
 - `conflicting_candidates`: 同一candidateで `glows/not_glows/mixed` が衝突した候補数
 - `retry_candidates`: 最新観測が `whiteout/blackout/mixed` の再検証候補数
 - `missing_in_table`: generatedに存在するが観測表に未登録の候補数
+- `observation_files`: チェック時に読み込んだ観測ファイル一覧（複数ファイル運用の確認用）
 - レポートの `Suggested immediate batch` で、
   - 端末状態確認用コントロール（glow / not_glow）
   - 優先順つきの次バッチ候補（`--batch-size`件）
