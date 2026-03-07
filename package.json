@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "gen:jswasm": "node src/jswasm-pipeline/cli.mjs --success-ref sample/success_sample.png --outdir generated",
+    "gen:jswasm": "node src/jswasm-pipeline/cli.mjs --success-ref sample/success_sample.png --outdir generated/jswasm",
     "gen": "node scripts/generate_candidates.mjs",
     "precheck": "node src/jswasm-pipeline/precheck.mjs",
     "precheck:legacy": "node scripts/posting_precheck.mjs",

@@ -12,7 +12,7 @@ function todayJstIsoDate() {
 
 function parseArgs(argv) {
   const args = {
-    generatedDir: "generated",
+    generatedDir: "generated/jswasm",
     outDate: todayJstIsoDate(),
     docsDir: "docs",
   };
@@ -33,7 +33,7 @@ function parseArgs(argv) {
       console.log(`Usage: node src/jswasm-pipeline/precheck.mjs [options]
 
 Options:
-  --generated-dir <dir>  generated image dir (default: generated)
+  --generated-dir <dir>  generated image dir (default: generated/jswasm)
   --out-date <YYYY-MM-DD> output date stamp for docs (default: JST today)
   --docs-dir <dir>       docs output dir (default: docs)
 `);

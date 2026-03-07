@@ -9,7 +9,7 @@ Options:
   --icc-fallback <path>     fallback ICC file when --success-ref has no iCCP
                             (default: generated/icc_bt2020_pq_from_success.icc)
   --allow-no-icc-fallback   allow generation even if ICC is unavailable
-  --outdir <dir>            output directory (default: generated)
+  --outdir <dir>            output directory (default: generated/jswasm)
   --width <n>               output width (default: 400)
   --height <n>              output height (default: 400)
   --alpha8-patch <0-255>    patch alpha in 8bit space (default: 64)
@@ -23,7 +23,7 @@ function parseArgs(argv) {
     successRef: "sample/success_sample.png",
     iccFallbackPath: "generated/icc_bt2020_pq_from_success.icc",
     allowNoIccFallback: false,
-    outdir: "generated",
+    outdir: "generated/jswasm",
     width: 400,
     height: 400,
     alpha8Patch: 64,

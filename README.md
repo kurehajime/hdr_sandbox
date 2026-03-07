@@ -26,10 +26,10 @@ npm run gen:jswasm
 
 - 実装: `src/jswasm-pipeline/`
 - 出力:
-  - `generated/candidate_success_like.png`
-  - `generated/candidate_fail_no_iccp.png`
+  - `generated/jswasm/candidate_success_like.png`
+  - `generated/jswasm/candidate_fail_no_iccp.png`
 - WASM `mulDiv255` が使えない場合は JS 計算へ自動フォールバック
-- `sample/success_sample.png` の iCCP 抽出に失敗した場合は `generated/icc_bt2020_pq_from_success.icc` を使用
+- `sample/success_sample.png` の iCCP 抽出に失敗した場合は `generated/jswasm/icc_bt2020_pq_from_success.icc` を使用
 - iCCP埋め込み失敗時は no-iCCP で継続生成（フォールバック）
 
 ### 2) 生成コマンド（失敗時フォールバック付き）

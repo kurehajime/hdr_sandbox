@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 function parseArgs(argv) {
   const args = {
     successRef: "sample/success_sample.png",
-    outdir: "generated",
+    outdir: "generated/jswasm",
     forceFallback: process.env.HDR_FORCE_JS_FALLBACK === "1",
     passthrough: [],
   };
