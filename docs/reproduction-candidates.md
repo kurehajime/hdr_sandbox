@@ -61,3 +61,19 @@ python3 scripts/make_candidates.py \
 - 実機（Xアプリ/iPhone）での投稿結果比較（光り方）
 - 投稿後配信物のメタ（再エンコード後の保持情報）確認
 
+## 人間追記
+candidate_success_like
+https://x.com/kurehajime/status/2030233227521302817
+→光って見えた
+
+candidate_fail_rgb_no_alpha
+https://x.com/kurehajime/status/2030233123523547149
+→光って見えた
+
+candidate_fail_no_iccp
+https://x.com/kurehajime/status/2030232947044110346
+→光って見えない
+
+candidate_fail_8bit
+https://x.com/kurehajime/status/2030232680877723982
+→光って見えた
