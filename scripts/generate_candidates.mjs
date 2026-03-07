@@ -5,8 +5,7 @@ function parseArgs(argv) {
   const args = {
     successRef: "sample/success_sample.png",
     outdir: "generated",
-    fallbackInput: "sample/success_sample.png",
-    forceFallback: process.env.HDR_FORCE_PY_FALLBACK === "1",
+    forceFallback: process.env.HDR_FORCE_JS_FALLBACK === "1",
     passthrough: [],
   };
 
@@ -18,9 +17,6 @@ function parseArgs(argv) {
       i += 1;
     } else if (a === "--outdir" && v) {
       args.outdir = v;
-      i += 1;
-    } else if (a === "--fallback-input" && v) {
-      args.fallbackInput = v;
       i += 1;
     } else if (a === "--force-fallback") {
       args.forceFallback = true;
@@ -36,41 +32,52 @@ function parseArgs(argv) {
   return args;
 }
 
-function run(cmd, argv) {
-  return spawnSync(cmd, argv, { stdio: "inherit" });
+function runNode(argv) {
+  return spawnSync("node", argv, { stdio: "inherit" });
 }
 
 const args = parseArgs(process.argv.slice(2));
 
-if (!args.forceFallback) {
-  const jsCmd = [
+if (args.forceFallback) {
+  console.error("[fallback] --force-fallback/HDR_FORCE_JS_FALLBACK=1 is set. run JS fallback path directly.");
+  const forced = runNode([
     "src/jswasm-pipeline/cli.mjs",
     "--success-ref",
     args.successRef,
     "--outdir",
     args.outdir,
+    "--force-js-fallback",
+    "--allow-no-icc-fallback",
     ...args.passthrough,
-  ];
-
-  const js = run("node", jsCmd);
-  if (js.status === 0) {
-    process.exit(0);
-  }
-
-  console.error(`[fallback] js/wasm pipeline failed (exit=${js.status ?? "null"}, signal=${js.signal ?? "none"}).`);
-} else {
-  console.error("[fallback] --force-fallback/HDR_FORCE_PY_FALLBACK=1 is set. skip js/wasm pipeline.");
+  ]);
+  process.exit(forced.status ?? 1);
 }
 
-console.error("[fallback] use python scripts/make_candidates.py --extended");
-const py = run("python3", [
-  "scripts/make_candidates.py",
-  "--input",
-  args.fallbackInput,
+const primary = runNode([
+  "src/jswasm-pipeline/cli.mjs",
   "--success-ref",
   args.successRef,
   "--outdir",
   args.outdir,
-  "--extended",
+  ...args.passthrough,
 ]);
-process.exit(py.status ?? 1);
+
+if (primary.status === 0) {
+  process.exit(0);
+}
+
+console.error(`[fallback] primary js/wasm pipeline failed (exit=${primary.status ?? "null"}, signal=${primary.signal ?? "none"}).`);
+console.error("[fallback] retry with JS math + allow-no-icc-fallback.");
+
+const fallback = runNode([
+  "src/jswasm-pipeline/cli.mjs",
+  "--success-ref",
+  args.successRef,
+  "--outdir",
+  args.outdir,
+  "--force-js-fallback",
+  "--allow-no-icc-fallback",
+  ...args.passthrough,
+]);
+
+process.exit(fallback.status ?? 1);

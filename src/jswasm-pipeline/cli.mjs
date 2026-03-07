@@ -74,6 +74,9 @@ async function main() {
   if (res.warning) {
     console.log(`warning: ${res.warning}`);
   }
+  if (res.fallbackUsed) {
+    console.log("fallback: embedded_iCCP_disabled");
+  }
   for (const p of res.generated) {
     console.log(`generated: ${p}`);
   }
