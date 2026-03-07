@@ -68,3 +68,15 @@
 
 - 比較表は `generated/comparison.md` の **legacy判定**（旧）と **relaxed判定**（新）を併記
 - 新しい投稿結果が出るまでは、仕様断定ではなく「仮説更新中」として扱う
+## 人間検証結果（X投稿）
+
+- `candidate_probe_8bit_rgb_no_alpha.png`
+  - 成功。十分に光って見えた
+  - https://x.com/kurehajime/status/2030240958701568112
+- `candidate_probe_alpha_255.png`
+  - 成功。十分に光って見えた
+  - https://x.com/kurehajime/status/2030241207994159531
+- `candidate_probe_alpha_0.png`
+  - 画像が真っ白でなにも見えず
+- `candidate_probe_size_512.png`
+  - 画像が真っ白でなにも見えず
