@@ -89,3 +89,13 @@
 
 - 比較表は `generated/comparison.md` の **legacy判定**（旧）と **relaxed判定**（新）を併記
 - 新しい投稿結果が出るまでは、仕様断定ではなく「仮説更新中」として扱う
+
+## 人間検証結果（X投稿）
+
+- `candidate_probe_alpha_gradient`
+  - https://x.com/kurehajime/status/2030244873153175737
+  - → 右半分は光って見えた。しかし左半分は黒っぽくなってしまった
+- `candidate_probe_alpha_1`
+  - 真っ白でなにも見えず
+- `candidate_probe_size_512_nontransparent`
+  - 真っ黒でなにも見えず
