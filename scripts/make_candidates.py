@@ -3,16 +3,23 @@
 成功例(success_sample.png)の特徴を再現したPNG候補と、失敗比較用バリアントを生成する。
 
 Usage:
+  # 基本セット
   python3 scripts/make_candidates.py \
     --input sample/success_sample.png \
     --success-ref sample/success_sample.png \
     --outdir generated
+
+  # 追加切り分けセット（iCCP/cicpは維持し、他条件を変える）
+  python3 scripts/make_candidates.py \
+    --input sample/success_sample.png \
+    --success-ref sample/success_sample.png \
+    --outdir generated \
+    --extended
 """
 
 from __future__ import annotations
 
 import argparse
-import os
 import struct
 import zlib
 from dataclasses import dataclass
@@ -23,17 +30,21 @@ from PIL import Image
 
 
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
+TARGET_CICP = [9, 16, 0, 1]
 
 
 @dataclass
 class CandidateResult:
     name: str
     path: Path
+    width: int
+    height: int
     bit_depth: int
     color_type: int
     has_iccp: bool
     cicp: list[int] | None
-    match_target_profile: bool
+    match_legacy_profile: bool
+    match_relaxed_profile: bool
 
 
 def _chunk(chunk_type: bytes, data: bytes) -> bytes:
@@ -140,12 +151,14 @@ def write_png(
     path.write_bytes(out)
 
 
-def parse_png_meta(path: Path) -> tuple[int, int, bool, list[int] | None]:
+def parse_png_meta(path: Path) -> tuple[int, int, int, int, bool, list[int] | None]:
     b = path.read_bytes()
     if b[:8] != PNG_SIG:
         raise ValueError(f"not png: {path}")
 
     o = 8
+    width = -1
+    height = -1
     bit_depth = -1
     color_type = -1
     has_iccp = False
@@ -161,7 +174,7 @@ def parse_png_meta(path: Path) -> tuple[int, int, bool, list[int] | None]:
         o += 4  # crc
 
         if typ == b"IHDR":
-            _w, _h, bit_depth, color_type, _cm, _fm, _im = struct.unpack(">IIBBBBB", data)
+            width, height, bit_depth, color_type, _cm, _fm, _im = struct.unpack(">IIBBBBB", data)
         elif typ == b"iCCP":
             has_iccp = True
             name = data.split(b"\x00", 1)[0]
@@ -170,10 +183,21 @@ def parse_png_meta(path: Path) -> tuple[int, int, bool, list[int] | None]:
         elif typ == b"IEND":
             break
 
-    return bit_depth, color_type, has_iccp, cicp
+    return width, height, bit_depth, color_type, has_iccp, cicp
 
 
-def build_candidates(input_path: Path, success_ref: Path, outdir: Path) -> list[CandidateResult]:
+def _resize_like(arr: np.ndarray, size: tuple[int, int]) -> np.ndarray:
+    pil = Image.fromarray(arr, mode="RGBA")
+    return np.array(pil.resize(size, Image.Resampling.LANCZOS), dtype=arr.dtype)
+
+
+def build_candidates(
+    input_path: Path,
+    success_ref: Path,
+    outdir: Path,
+    *,
+    extended: bool,
+) -> list[CandidateResult]:
     img = Image.open(input_path).convert("RGBA").resize((400, 400), Image.Resampling.LANCZOS)
     arr8_rgba = np.array(img, dtype=np.uint8)
     arr16_rgba = arr8_rgba.astype(np.uint16) * 257
@@ -220,20 +244,69 @@ def build_candidates(input_path: Path, success_ref: Path, outdir: Path) -> list[
         ),
     ]
 
+    if extended:
+        arr8_rgb = arr8_rgba[:, :, :3]
+        arr16_alpha255 = arr16_rgba.copy()
+        arr16_alpha255[:, :, 3] = 65535
+        arr16_alpha0 = arr16_rgba.copy()
+        arr16_alpha0[:, :, 3] = 0
+        arr16_rgba_512 = _resize_like(arr16_rgba, (512, 512))
+
+        targets.extend(
+            [
+                (
+                    "probe_8bit_rgb_no_alpha",
+                    outdir / "candidate_probe_8bit_rgb_no_alpha.png",
+                    arr8_rgb,
+                    8,
+                    2,
+                    icc_success,
+                ),
+                (
+                    "probe_alpha_255",
+                    outdir / "candidate_probe_alpha_255.png",
+                    arr16_alpha255,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
+                    "probe_alpha_0",
+                    outdir / "candidate_probe_alpha_0.png",
+                    arr16_alpha0,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
+                    "probe_size_512",
+                    outdir / "candidate_probe_size_512.png",
+                    arr16_rgba_512,
+                    16,
+                    6,
+                    icc_success,
+                ),
+            ]
+        )
+
     results: list[CandidateResult] = []
     for name, path, arr, bd, ct, icc in targets:
         write_png(path, arr, bit_depth=bd, color_type=ct, icc_profile=icc, text_entries=text)
-        bit_depth, color_type, has_iccp, cicp = parse_png_meta(path)
-        ok = bit_depth == 16 and color_type == 6 and has_iccp and cicp == [9, 16, 0, 1]
+        width, height, bit_depth, color_type, has_iccp, cicp = parse_png_meta(path)
+        legacy_ok = bit_depth == 16 and color_type == 6 and has_iccp and cicp == TARGET_CICP
+        relaxed_ok = has_iccp and cicp == TARGET_CICP
         results.append(
             CandidateResult(
                 name=name,
                 path=path,
+                width=width,
+                height=height,
                 bit_depth=bit_depth,
                 color_type=color_type,
                 has_iccp=has_iccp,
                 cicp=cicp,
-                match_target_profile=ok,
+                match_legacy_profile=legacy_ok,
+                match_relaxed_profile=relaxed_ok,
             )
         )
 
@@ -243,25 +316,42 @@ def build_candidates(input_path: Path, success_ref: Path, outdir: Path) -> list[
     return results
 
 
-def write_report(results: list[CandidateResult], path: Path) -> None:
+def write_report(results: list[CandidateResult], path: Path, *, extended: bool) -> None:
     lines = [
         "# Candidate Comparison (auto-generated)",
         "",
-        "| name | file | bit_depth | color_type | iCCP | cicp | match_target_profile |",
-        "|---|---|---:|---:|---|---|---|",
+        "| name | file | size | bit_depth | color_type | iCCP | cicp | legacy(16bit+RGBA+iCCP/cicp) | relaxed(iCCP/cicp only) |",
+        "|---|---|---|---:|---:|---|---|---|---|",
     ]
     for r in results:
         cicp = "-" if r.cicp is None else str(r.cicp)
         lines.append(
-            f"| {r.name} | `{r.path.name}` | {r.bit_depth} | {r.color_type} | {'yes' if r.has_iccp else 'no'} | {cicp} | {'YES' if r.match_target_profile else 'NO'} |"
+            "| "
+            f"{r.name} | `{r.path.name}` | {r.width}x{r.height} | {r.bit_depth} | {r.color_type} | "
+            f"{'yes' if r.has_iccp else 'no'} | {cicp} | "
+            f"{'YES' if r.match_legacy_profile else 'NO'} | {'YES' if r.match_relaxed_profile else 'NO'} |"
         )
 
     lines.extend(
         [
             "",
-            "判定ロジック: `bit_depth=16` かつ `color_type=6(RGBA)` かつ `iCCP.cicp=[9,16,0,1]`",
+            "判定ロジック:",
+            "- legacy: `bit_depth=16` かつ `color_type=6(RGBA)` かつ `iCCP.cicp=[9,16,0,1]`",
+            "- relaxed: `iCCP.cicp=[9,16,0,1]`（bit depth / alpha / size は不問）",
         ]
     )
+
+    if extended:
+        lines.extend(
+            [
+                "",
+                "extended候補の狙い:",
+                "- `probe_8bit_rgb_no_alpha`: 8bit と no-alpha を同時適用（2x2切り分けの第4点）",
+                "- `probe_alpha_255` / `probe_alpha_0`: alpha値そのものの寄与を確認",
+                "- `probe_size_512`: 400x400固定が必要かを確認",
+            ]
+        )
+
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines), encoding="utf-8")
 
@@ -275,20 +365,34 @@ def main() -> None:
         help="reference success png path (iCCP source)",
     )
     ap.add_argument("--outdir", default="generated", help="output directory")
+    ap.add_argument(
+        "--extended",
+        action="store_true",
+        help="generate additional probe candidates that vary non-iCCP/cicp conditions",
+    )
     args = ap.parse_args()
 
     input_path = Path(args.input)
     success_ref = Path(args.success_ref)
     outdir = Path(args.outdir)
 
-    results = build_candidates(input_path, success_ref, outdir)
+    results = build_candidates(
+        input_path,
+        success_ref,
+        outdir,
+        extended=args.extended,
+    )
     report = outdir / "comparison.md"
-    write_report(results, report)
+    write_report(results, report, extended=args.extended)
 
     print(f"generated {len(results)} candidates -> {outdir}")
     for r in results:
         print(
-            f"- {r.name}: {r.path} bd={r.bit_depth} ct={r.color_type} iCCP={'yes' if r.has_iccp else 'no'} cicp={r.cicp} match={'YES' if r.match_target_profile else 'NO'}"
+            f"- {r.name}: {r.path} "
+            f"size={r.width}x{r.height} bd={r.bit_depth} ct={r.color_type} "
+            f"iCCP={'yes' if r.has_iccp else 'no'} cicp={r.cicp} "
+            f"legacy={'YES' if r.match_legacy_profile else 'NO'} "
+            f"relaxed={'YES' if r.match_relaxed_profile else 'NO'}"
         )
     print(f"report: {report}")
 

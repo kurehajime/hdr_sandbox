@@ -33,15 +33,21 @@ python3 scripts/check_png_hdr.py path/to/image.png
 python3 scripts/make_candidates.py \
   --input sample/success_sample.png \
   --success-ref sample/success_sample.png \
-  --outdir generated
+  --outdir generated \
+  --extended
 ```
 
-出力:
+出力（基本 + 追加切り分け候補）:
 
 - `generated/candidate_success_like.png`
 - `generated/candidate_fail_8bit.png`
 - `generated/candidate_fail_no_iccp.png`
 - `generated/candidate_fail_rgb_no_alpha.png`
+- `generated/candidate_probe_8bit_rgb_no_alpha.png`
+- `generated/candidate_probe_alpha_255.png`
+- `generated/candidate_probe_alpha_0.png`
+- `generated/candidate_probe_size_512.png`
 - `generated/comparison.md`（比較表）
 
-詳細は `docs/reproduction-candidates.md` を参照。
+詳細は `docs/reproduction-candidates.md` と
+`docs/hypothesis-update-2026-03-07.md` を参照。
