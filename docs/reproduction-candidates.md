@@ -125,6 +125,10 @@ python3 scripts/check_human_observations.py \
   - `--batch-size N` で次バッチ候補の件数を調整可能
   - `--batch-family-cap N` で次バッチ内の同一family件数を上限Nに抑制可能（0は無制限）
   - `--strict-conflict` で再現性衝突をCI失敗扱いにできる
+- 2026-03-08 v21 追加:
+  - `--checklist-include-targeted-followups` を追加し、チェックリストに観測トリガー連動の追試パックを任意で展開可能化
+  - 追試パックは `probe_alpha_gradient` の mixed など既存観測状態をもとに自動抽出
+  - チェックリスト冒頭メタに `include_targeted_followups` を追記
 - 2026-03-08 v20 追加:
   - `--post-checklist-out docs/posting-checklist-YYYY-MM-DD.md` を追加し、X投稿時の記録チェックリストを自動生成
   - `--checklist-batch-mode (priority|diversified|cicp)` でチェックリストの候補選定を切替
@@ -142,6 +146,7 @@ python3 scripts/check_human_observations.py \
   --report-json-out docs/observation-status-2026-03-08.json \
   --post-checklist-out docs/posting-checklist-2026-03-08.md \
   --checklist-batch-mode diversified \
+  --checklist-include-targeted-followups \
   --batch-size 10 \
   --batch-family-cap 2
 ```

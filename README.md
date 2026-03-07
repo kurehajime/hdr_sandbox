@@ -110,6 +110,7 @@ python3 scripts/check_human_observations.py \
   --report-json-out docs/observation-status-YYYY-MM-DD.json \
   --post-checklist-out docs/posting-checklist-YYYY-MM-DD.md \
   --checklist-batch-mode diversified \
+  --checklist-include-targeted-followups \
   --batch-size 10 \
   --batch-family-cap 2
 ```
@@ -124,6 +125,7 @@ python3 scripts/check_human_observations.py \
 - `--post-checklist-out`: 人間がX投稿時にそのまま埋められるチェックリストMarkdownを出力
   - controls（glow/not_glow）+ 次バッチ候補 + 実投稿結果記入欄を同梱
   - `--checklist-batch-mode` で候補選定モードを切替（`priority` / `diversified` / `cicp`）
+  - `--checklist-include-targeted-followups` を付けると、観測トリガー連動の追試パック（向き差分/しきい値追試など）をチェックリストにも展開
 - レポートの `Suggested immediate batch` で、
   - 端末状態確認用コントロール（glow / not_glow）
   - 状態優先（未観測todo → 再試行whiteout/blackout/mixed → URL補完）+ 系統優先つきの次バッチ候補（`--batch-size`件）
@@ -134,4 +136,4 @@ python3 scripts/check_human_observations.py \
 - `--strict-conflict` を付けると decisive観測の衝突が1件でも終了コード2
 
 詳細は `docs/reproduction-candidates.md` / `docs/human-observations.md` /
-`docs/hypothesis-update-2026-03-07.md` を参照。
+`docs/human-observations-extra.md` を参照。

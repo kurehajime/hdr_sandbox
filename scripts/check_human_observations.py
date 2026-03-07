@@ -506,6 +506,7 @@ def build_post_checklist(
     batch_size: int,
     batch_family_cap: int,
     mode: str,
+    include_targeted_followups: bool,
 ) -> str:
     ordered_pending = order_pending_rows(pending_rows)
     priority_batch = apply_family_cap(
@@ -530,6 +531,8 @@ def build_post_checklist(
         batch_rows = cicp_focus
         mode_label = "cicp_focus"
 
+    targeted_followups = build_targeted_followups(per_candidate, pending_rows)
+
     glow_control = pick_control(
         per_candidate,
         preferred=["success_like", "fail_rgb_no_alpha", "fail_8bit"],
@@ -547,6 +550,7 @@ def build_post_checklist(
     lines.append(f"- checklist_mode: {mode_label}")
     lines.append(f"- batch_size: {batch_size}")
     lines.append(f"- batch_family_cap: {batch_family_cap}")
+    lines.append(f"- include_targeted_followups: {str(include_targeted_followups).lower()}")
     lines.append("")
 
     lines.append("## 0) Controls")
@@ -578,6 +582,28 @@ def build_post_checklist(
     else:
         lines.append("| 1 | - | - | - | - | - | TODO | TODO | pending candidate not found |")
     lines.append("")
+
+    if include_targeted_followups:
+        lines.append("## 1b) Targeted follow-up packs")
+        lines.append("")
+        if targeted_followups:
+            lines.append("既存観測のトリガー条件に応じて、次に優先投稿する候補群。")
+            lines.append("")
+            for pack in targeted_followups:
+                lines.append(f"### {pack['name']}")
+                lines.append("")
+                lines.append(f"- reason: {pack['reason']}")
+                lines.append("")
+                lines.append("| candidate | file | current_observed | current_url | result_observed | x_post_url | notes |")
+                lines.append("|---|---|---|---|---|---|---|")
+                for row in pack["items"]:
+                    lines.append(
+                        f"| `{row['candidate']}` | `{row['file']}` | `{row['observed']}` | {row['x_post_url']} | TODO | TODO | TODO |"
+                    )
+                lines.append("")
+        else:
+            lines.append("- currently no targeted follow-up packs were triggered")
+            lines.append("")
 
     lines.append("## 2) Post-run notes")
     lines.append("")
@@ -821,6 +847,11 @@ def main() -> None:
         default="priority",
         help="post-checklistに採用する候補セット（priority/diversified/cicp）",
     )
+    ap.add_argument(
+        "--checklist-include-targeted-followups",
+        action="store_true",
+        help="post-checklistに target follow-up pack セクションを追加する",
+    )
     ap.add_argument("--batch-size", type=int, default=8, help="レポート内の次バッチ候補の最大件数")
     ap.add_argument(
         "--batch-family-cap",
@@ -1002,6 +1033,7 @@ def main() -> None:
             batch_size=args.batch_size,
             batch_family_cap=args.batch_family_cap,
             mode=args.checklist_batch_mode,
+            include_targeted_followups=args.checklist_include_targeted_followups,
         )
         out_checklist = Path(args.post_checklist_out)
         out_checklist.parent.mkdir(parents=True, exist_ok=True)
