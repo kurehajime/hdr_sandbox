@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -266,6 +267,99 @@ def summarize_family_progress(
     return [progress[fam] for fam in ordered_families]
 
 
+def simplify_row(row: dict[str, object]) -> dict[str, object]:
+    """出力向けにcandidate行の主要項目だけを抽出する。"""
+    candidate = str(row.get("candidate", ""))
+    return {
+        "candidate": candidate,
+        "file": str(row.get("file", "")),
+        "observed": str(row.get("observed", row.get("latest_observed", ""))),
+        "x_post_url": str(row.get("x_post_url", row.get("latest_url", ""))),
+        "family": infer_family(candidate),
+    }
+
+
+def build_structured_report(
+    *,
+    obs_paths: list[Path],
+    rows: list[dict[str, str]],
+    pending_rows: list[dict[str, str]],
+    missing_in_table: set[str],
+    per_candidate: dict[str, dict[str, object]],
+    family_progress: list[dict[str, object]],
+    conflicts: list[dict[str, object]],
+    retry_candidates: list[dict[str, object]],
+    batch_size: int,
+) -> dict[str, object]:
+    ordered_pending = order_pending_rows(pending_rows)
+    diversified_batch = build_diversified_batch(pending_rows, batch_size=batch_size)
+
+    glow_control = pick_control(
+        per_candidate,
+        preferred=["success_like", "fail_rgb_no_alpha", "fail_8bit"],
+        target_observed="glows",
+    )
+    not_glow_control = pick_control(
+        per_candidate,
+        preferred=["fail_no_iccp"],
+        target_observed="not_glows",
+    )
+
+    return {
+        "summary": {
+            "observation_files": [str(p) for p in obs_paths],
+            "total_rows": len(rows),
+            "unique_candidates": len(per_candidate),
+            "pending_rows": len(pending_rows),
+            "conflicting_candidates": len(conflicts),
+            "retry_candidates": len(retry_candidates),
+            "missing_in_table": len(missing_in_table),
+        },
+        "family_progress": [
+            {
+                "family": str(fp["family"]),
+                "total": int(fp["total"]),
+                "resolved": int(fp["resolved"]),
+                "uncertain": int(fp["uncertain"]),
+                "todo_or_url_todo": int(fp["todo_or_url_todo"]),
+                "completion": (int(fp["resolved"]) / int(fp["total"])) if int(fp["total"]) else 0.0,
+            }
+            for fp in family_progress
+        ],
+        "pending": [simplify_row(r) for r in ordered_pending],
+        "retry": [
+            {
+                **simplify_row(c),
+                "attempts": int(c.get("attempts", 0)),
+                "decisive_outcomes": sorted(str(x) for x in c.get("decisive_set", set())),
+            }
+            for c in retry_candidates
+        ],
+        "conflicts": [
+            {
+                **simplify_row(c),
+                "attempts": int(c.get("attempts", 0)),
+                "decisive_outcomes": sorted(str(x) for x in c.get("decisive_set", set())),
+            }
+            for c in conflicts
+        ],
+        "suggested_batches": {
+            "controls": {
+                "glow": simplify_row(glow_control) if glow_control else None,
+                "not_glow": simplify_row(not_glow_control) if not_glow_control else None,
+            },
+            "priority": [simplify_row(r) for r in ordered_pending[:batch_size]],
+            "diversified_round_robin": [simplify_row(r) for r in diversified_batch],
+            "cicp_focus": [
+                simplify_row(r)
+                for r in ordered_pending
+                if infer_family(r["candidate"]) == "cicp"
+            ],
+        },
+        "missing_candidates": sorted(missing_in_table),
+    }
+
+
 def build_report(
     rows: list[dict[str, str]],
     pending_rows: list[dict[str, str]],
@@ -450,6 +544,10 @@ def main() -> None:
     )
     ap.add_argument("--generated-dir", default="generated")
     ap.add_argument("--report-out", help="未観測候補のMarkdownレポート出力先")
+    ap.add_argument(
+        "--report-json-out",
+        help="機械処理向けのJSONレポート出力先（投稿自動化/集計連携用）",
+    )
     ap.add_argument("--batch-size", type=int, default=8, help="レポート内の次バッチ候補の最大件数")
     ap.add_argument(
         "--strict-pending",
@@ -589,6 +687,26 @@ def main() -> None:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(report, encoding="utf-8")
         print(f"report_written: {out}")
+
+    if args.report_json_out:
+        report_json = build_structured_report(
+            obs_paths=obs_paths,
+            rows=rows,
+            pending_rows=pending_rows,
+            missing_in_table=missing_in_table,
+            per_candidate=per_candidate,
+            family_progress=family_progress,
+            conflicts=conflicts,
+            retry_candidates=retry_candidates,
+            batch_size=args.batch_size,
+        )
+        out_json = Path(args.report_json_out)
+        out_json.parent.mkdir(parents=True, exist_ok=True)
+        out_json.write_text(
+            json.dumps(report_json, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        print(f"report_json_written: {out_json}")
 
     if bad_observed or missing_files:
         raise SystemExit(2)

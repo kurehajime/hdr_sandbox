@@ -101,6 +101,7 @@ python3 scripts/check_human_observations.py \
   --observations-glob 'human-observations-*.md' \
   --generated-dir generated \
   --report-out docs/observation-status-YYYY-MM-DD.md \
+  --report-json-out docs/observation-status-YYYY-MM-DD.json \
   --batch-size 10
 ```
 
@@ -110,6 +111,7 @@ python3 scripts/check_human_observations.py \
 - `missing_in_table`: generatedに存在するが観測表に未登録の候補数
 - `observation_files`: チェック時に読み込んだ観測ファイル一覧（複数ファイル運用の確認用）
 - `family_progress_latest`: candidate最新状態を family 別に集計（resolved/uncertain/todo_or_url_todo/completion）
+- `--report-json-out`: pending/retry/conflict/推奨バッチをJSONで出力（自動投稿フロー連携用）
 - レポートの `Suggested immediate batch` で、
   - 端末状態確認用コントロール（glow / not_glow）
   - 状態優先（未観測todo → 再試行whiteout/blackout/mixed → URL補完）+ 系統優先つきの次バッチ候補（`--batch-size`件）

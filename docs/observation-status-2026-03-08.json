@@ -1,0 +1,480 @@
+{
+  "summary": {
+    "observation_files": [
+      "docs/human-observations.md",
+      "docs/human-observations-extra.md"
+    ],
+    "total_rows": 27,
+    "unique_candidates": 27,
+    "pending_rows": 19,
+    "conflicting_candidates": 0,
+    "retry_candidates": 5,
+    "missing_in_table": 0
+  },
+  "family_progress": [
+    {
+      "family": "cicp",
+      "total": 6,
+      "resolved": 0,
+      "uncertain": 0,
+      "todo_or_url_todo": 6,
+      "completion": 0.0
+    },
+    {
+      "family": "threshold",
+      "total": 1,
+      "resolved": 1,
+      "uncertain": 0,
+      "todo_or_url_todo": 0,
+      "completion": 1.0
+    },
+    {
+      "family": "isoeff",
+      "total": 1,
+      "resolved": 0,
+      "uncertain": 0,
+      "todo_or_url_todo": 1,
+      "completion": 0.0
+    },
+    {
+      "family": "alpha",
+      "total": 9,
+      "resolved": 1,
+      "uncertain": 3,
+      "todo_or_url_todo": 7,
+      "completion": 0.1111111111111111
+    },
+    {
+      "family": "luma",
+      "total": 2,
+      "resolved": 0,
+      "uncertain": 0,
+      "todo_or_url_todo": 2,
+      "completion": 0.0
+    },
+    {
+      "family": "size",
+      "total": 3,
+      "resolved": 0,
+      "uncertain": 2,
+      "todo_or_url_todo": 3,
+      "completion": 0.0
+    },
+    {
+      "family": "probe_other",
+      "total": 1,
+      "resolved": 1,
+      "uncertain": 0,
+      "todo_or_url_todo": 0,
+      "completion": 1.0
+    },
+    {
+      "family": "success",
+      "total": 1,
+      "resolved": 1,
+      "uncertain": 0,
+      "todo_or_url_todo": 0,
+      "completion": 1.0
+    },
+    {
+      "family": "fail",
+      "total": 3,
+      "resolved": 3,
+      "uncertain": 0,
+      "todo_or_url_todo": 0,
+      "completion": 1.0
+    }
+  ],
+  "pending": [
+    {
+      "candidate": "probe_cicp_bt2020_pq",
+      "file": "candidate_probe_cicp_bt2020_pq.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "cicp"
+    },
+    {
+      "candidate": "probe_cicp_bt2020_pq_limited",
+      "file": "candidate_probe_cicp_bt2020_pq_limited.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "cicp"
+    },
+    {
+      "candidate": "probe_cicp_bt2020_pq_matrix_1",
+      "file": "candidate_probe_cicp_bt2020_pq_matrix_1.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "cicp"
+    },
+    {
+      "candidate": "probe_cicp_bt2020_srgb",
+      "file": "candidate_probe_cicp_bt2020_srgb.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "cicp"
+    },
+    {
+      "candidate": "probe_cicp_bt709_pq",
+      "file": "candidate_probe_cicp_bt709_pq.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "cicp"
+    },
+    {
+      "candidate": "probe_cicp_bt709_srgb",
+      "file": "candidate_probe_cicp_bt709_srgb.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "cicp"
+    },
+    {
+      "candidate": "probe_isoeff_triplet",
+      "file": "candidate_probe_isoeff_triplet.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "isoeff"
+    },
+    {
+      "candidate": "probe_alpha_16",
+      "file": "candidate_probe_alpha_16.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "alpha"
+    },
+    {
+      "candidate": "probe_alpha_64",
+      "file": "candidate_probe_alpha_64.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "alpha"
+    },
+    {
+      "candidate": "probe_alpha_ladder_1_255",
+      "file": "candidate_probe_alpha_ladder_1_255.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "alpha"
+    },
+    {
+      "candidate": "probe_alpha_lr_split_16_64",
+      "file": "candidate_probe_alpha_lr_split_16_64.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "alpha"
+    },
+    {
+      "candidate": "probe_alpha_luma_matrix",
+      "file": "candidate_probe_alpha_luma_matrix.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "alpha"
+    },
+    {
+      "candidate": "probe_luma_ladder_alpha255",
+      "file": "candidate_probe_luma_ladder_alpha255.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "luma"
+    },
+    {
+      "candidate": "probe_luma_ladder_alpha64",
+      "file": "candidate_probe_luma_ladder_alpha64.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "luma"
+    },
+    {
+      "candidate": "probe_size_512_alpha255_bright_patch",
+      "file": "candidate_probe_size_512_alpha255_bright_patch.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "size"
+    },
+    {
+      "candidate": "probe_alpha_0",
+      "file": "candidate_probe_alpha_0.png",
+      "observed": "whiteout",
+      "x_post_url": "TODO",
+      "family": "alpha"
+    },
+    {
+      "candidate": "probe_alpha_1",
+      "file": "candidate_probe_alpha_1.png",
+      "observed": "whiteout",
+      "x_post_url": "TODO",
+      "family": "alpha"
+    },
+    {
+      "candidate": "probe_size_512",
+      "file": "candidate_probe_size_512.png",
+      "observed": "whiteout",
+      "x_post_url": "TODO",
+      "family": "size"
+    },
+    {
+      "candidate": "probe_size_512_nontransparent",
+      "file": "candidate_probe_size_512_nontransparent.png",
+      "observed": "blackout",
+      "x_post_url": "TODO",
+      "family": "size"
+    }
+  ],
+  "retry": [
+    {
+      "candidate": "probe_alpha_0",
+      "file": "candidate_probe_alpha_0.png",
+      "observed": "whiteout",
+      "x_post_url": "TODO",
+      "family": "alpha",
+      "attempts": 1,
+      "decisive_outcomes": []
+    },
+    {
+      "candidate": "probe_alpha_1",
+      "file": "candidate_probe_alpha_1.png",
+      "observed": "whiteout",
+      "x_post_url": "TODO",
+      "family": "alpha",
+      "attempts": 1,
+      "decisive_outcomes": []
+    },
+    {
+      "candidate": "probe_alpha_gradient",
+      "file": "candidate_probe_alpha_gradient.png",
+      "observed": "mixed",
+      "x_post_url": "https://x.com/kurehajime/status/2030244873153175737",
+      "family": "alpha",
+      "attempts": 1,
+      "decisive_outcomes": [
+        "mixed"
+      ]
+    },
+    {
+      "candidate": "probe_size_512",
+      "file": "candidate_probe_size_512.png",
+      "observed": "whiteout",
+      "x_post_url": "TODO",
+      "family": "size",
+      "attempts": 1,
+      "decisive_outcomes": []
+    },
+    {
+      "candidate": "probe_size_512_nontransparent",
+      "file": "candidate_probe_size_512_nontransparent.png",
+      "observed": "blackout",
+      "x_post_url": "TODO",
+      "family": "size",
+      "attempts": 1,
+      "decisive_outcomes": []
+    }
+  ],
+  "conflicts": [],
+  "suggested_batches": {
+    "controls": {
+      "glow": {
+        "candidate": "success_like",
+        "file": "candidate_success_like.png",
+        "observed": "glows",
+        "x_post_url": "https://x.com/kurehajime/status/2030233227521302817",
+        "family": "success"
+      },
+      "not_glow": {
+        "candidate": "fail_no_iccp",
+        "file": "candidate_fail_no_iccp.png",
+        "observed": "not_glows",
+        "x_post_url": "https://x.com/kurehajime/status/2030232947044110346",
+        "family": "fail"
+      }
+    },
+    "priority": [
+      {
+        "candidate": "probe_cicp_bt2020_pq",
+        "file": "candidate_probe_cicp_bt2020_pq.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "cicp"
+      },
+      {
+        "candidate": "probe_cicp_bt2020_pq_limited",
+        "file": "candidate_probe_cicp_bt2020_pq_limited.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "cicp"
+      },
+      {
+        "candidate": "probe_cicp_bt2020_pq_matrix_1",
+        "file": "candidate_probe_cicp_bt2020_pq_matrix_1.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "cicp"
+      },
+      {
+        "candidate": "probe_cicp_bt2020_srgb",
+        "file": "candidate_probe_cicp_bt2020_srgb.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "cicp"
+      },
+      {
+        "candidate": "probe_cicp_bt709_pq",
+        "file": "candidate_probe_cicp_bt709_pq.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "cicp"
+      },
+      {
+        "candidate": "probe_cicp_bt709_srgb",
+        "file": "candidate_probe_cicp_bt709_srgb.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "cicp"
+      },
+      {
+        "candidate": "probe_isoeff_triplet",
+        "file": "candidate_probe_isoeff_triplet.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "isoeff"
+      },
+      {
+        "candidate": "probe_alpha_16",
+        "file": "candidate_probe_alpha_16.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "alpha"
+      },
+      {
+        "candidate": "probe_alpha_64",
+        "file": "candidate_probe_alpha_64.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "alpha"
+      },
+      {
+        "candidate": "probe_alpha_ladder_1_255",
+        "file": "candidate_probe_alpha_ladder_1_255.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "alpha"
+      }
+    ],
+    "diversified_round_robin": [
+      {
+        "candidate": "probe_cicp_bt2020_pq",
+        "file": "candidate_probe_cicp_bt2020_pq.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "cicp"
+      },
+      {
+        "candidate": "probe_isoeff_triplet",
+        "file": "candidate_probe_isoeff_triplet.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "isoeff"
+      },
+      {
+        "candidate": "probe_alpha_16",
+        "file": "candidate_probe_alpha_16.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "alpha"
+      },
+      {
+        "candidate": "probe_luma_ladder_alpha255",
+        "file": "candidate_probe_luma_ladder_alpha255.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "luma"
+      },
+      {
+        "candidate": "probe_size_512_alpha255_bright_patch",
+        "file": "candidate_probe_size_512_alpha255_bright_patch.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "size"
+      },
+      {
+        "candidate": "probe_cicp_bt2020_pq_limited",
+        "file": "candidate_probe_cicp_bt2020_pq_limited.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "cicp"
+      },
+      {
+        "candidate": "probe_alpha_64",
+        "file": "candidate_probe_alpha_64.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "alpha"
+      },
+      {
+        "candidate": "probe_luma_ladder_alpha64",
+        "file": "candidate_probe_luma_ladder_alpha64.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "luma"
+      },
+      {
+        "candidate": "probe_size_512",
+        "file": "candidate_probe_size_512.png",
+        "observed": "whiteout",
+        "x_post_url": "TODO",
+        "family": "size"
+      },
+      {
+        "candidate": "probe_cicp_bt2020_pq_matrix_1",
+        "file": "candidate_probe_cicp_bt2020_pq_matrix_1.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "cicp"
+      }
+    ],
+    "cicp_focus": [
+      {
+        "candidate": "probe_cicp_bt2020_pq",
+        "file": "candidate_probe_cicp_bt2020_pq.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "cicp"
+      },
+      {
+        "candidate": "probe_cicp_bt2020_pq_limited",
+        "file": "candidate_probe_cicp_bt2020_pq_limited.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "cicp"
+      },
+      {
+        "candidate": "probe_cicp_bt2020_pq_matrix_1",
+        "file": "candidate_probe_cicp_bt2020_pq_matrix_1.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "cicp"
+      },
+      {
+        "candidate": "probe_cicp_bt2020_srgb",
+        "file": "candidate_probe_cicp_bt2020_srgb.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "cicp"
+      },
+      {
+        "candidate": "probe_cicp_bt709_pq",
+        "file": "candidate_probe_cicp_bt709_pq.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "cicp"
+      },
+      {
+        "candidate": "probe_cicp_bt709_srgb",
+        "file": "candidate_probe_cicp_bt709_srgb.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "cicp"
+      }
+    ]
+  },
+  "missing_candidates": []
+}

@@ -1,6 +1,6 @@
-# success_sample.png 再現候補の生成手順（第16版）
+# success_sample.png 再現候補の生成手順（第17版）
 
-更新日: 2026-03-08 (v16: family進捗可視化 + 多様性重視バッチ提案を追加)
+更新日: 2026-03-08 (v17: JSONレポート出力を追加)
 
 ## 目的
 
@@ -107,6 +107,7 @@ python3 scripts/check_human_observations.py \
   - `retry_candidates`（最新が whiteout/blackout/mixed）を抽出
   - `family_progress_latest`（family別の resolved / uncertain / todo_or_url_todo / completion）をCLI出力
   - `--report-out docs/observation-status-YYYY-MM-DD.md` で次の投稿計画レポートを自動生成
+  - `--report-json-out docs/observation-status-YYYY-MM-DD.json` で機械処理向けのJSONレポートを生成
   - レポートに `Family progress` テーブルを追加し、観測完了率の低いfamilyを可視化
   - `Suggested immediate batch` に、
     - glow / not_glow の端末状態確認コントロール
@@ -122,6 +123,7 @@ python3 scripts/check_human_observations.py \
   --observations-glob 'human-observations-*.md' \
   --generated-dir generated \
   --report-out docs/observation-status-2026-03-08.md \
+  --report-json-out docs/observation-status-2026-03-08.json \
   --batch-size 10
 ```
 
