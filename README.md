@@ -52,6 +52,7 @@ python3 scripts/make_candidates.py \
 - `generated/candidate_probe_alpha_gradient.png`
 - `generated/candidate_probe_alpha_gradient_rl.png`
 - `generated/candidate_probe_alpha_gradient_tb.png`
+- `generated/candidate_probe_position_quadrant_alpha64.png`
 - `generated/candidate_probe_alpha_lr_split_16_64.png`
 - `generated/candidate_probe_alpha_ladder_1_255.png`
 - `generated/candidate_probe_luma_ladder_alpha255.png`
@@ -71,6 +72,7 @@ python3 scripts/make_candidates.py \
 - `generated/comparison.md`（比較表）
 - `generated/alpha_ladder_spec.md`（alpha段階のlane対応表）
 - `generated/alpha_gradient_orientation_spec.md`（alphaグラデーション向き比較の観測仕様）
+- `generated/position_quadrant_spec.md`（4象限同一パッチの位置依存バイアス観測仕様）
 - `generated/luma_ladder_spec.md`（RGB段階と実効輝度のlane対応表）
 - `generated/alpha_luma_matrix_spec.md`（2Dマトリクスの行列lane対応表）
 - `generated/isoeff_triplet_spec.md`（目標effective固定帯のlane対応表）
@@ -119,6 +121,8 @@ python3 scripts/check_human_observations.py \
 - `conflicting_candidates`: 同一candidateで `glows/not_glows/mixed` が衝突した候補数
 - `retry_candidates`: 最新観測が `whiteout/blackout/mixed` の再検証候補数
 - `missing_in_table`: generatedに存在するが観測表に未登録の候補数
+- `mapping_conflicts_candidate`: 同一candidateに複数fileが紐づく件数（candidate→file 不整合）
+- `mapping_conflicts_file`: 同一fileを複数candidateが参照する件数（file→candidate 不整合）
 - `observation_files`: チェック時に読み込んだ観測ファイル一覧（複数ファイル運用の確認用）
 - `family_progress_latest`: candidate最新状態を family 別に集計（resolved/uncertain/todo_or_url_todo/completion）
 - `--report-json-out`: pending/retry/conflict/推奨バッチをJSONで出力（自動投稿フロー連携用）
@@ -134,6 +138,7 @@ python3 scripts/check_human_observations.py \
   を自動提案
 - `--strict-pending` を付けると pending が1件でも終了コード2
 - `--strict-conflict` を付けると decisive観測の衝突が1件でも終了コード2
+- `--strict-mapping` を付けると candidate↔file 対応の不整合（1対多/多対1）が1件でも終了コード2
 
 詳細は `docs/reproduction-candidates.md` / `docs/human-observations.md` /
 `docs/human-observations-extra.md` を参照。

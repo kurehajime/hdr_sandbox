@@ -4,12 +4,14 @@
       "docs/human-observations.md",
       "docs/human-observations-extra.md"
     ],
-    "total_rows": 29,
-    "unique_candidates": 29,
-    "pending_rows": 21,
+    "total_rows": 30,
+    "unique_candidates": 30,
+    "pending_rows": 22,
     "conflicting_candidates": 0,
     "retry_candidates": 5,
-    "missing_in_table": 0
+    "missing_in_table": 0,
+    "mapping_conflicts_candidate": 0,
+    "mapping_conflicts_file": 0
   },
   "family_progress": [
     {
@@ -43,6 +45,14 @@
       "uncertain": 3,
       "todo_or_url_todo": 9,
       "completion": 0.09090909090909091
+    },
+    {
+      "family": "position",
+      "total": 1,
+      "resolved": 0,
+      "uncertain": 0,
+      "todo_or_url_todo": 1,
+      "completion": 0.0
     },
     {
       "family": "luma",
@@ -185,6 +195,13 @@
       "family": "alpha"
     },
     {
+      "candidate": "probe_position_quadrant_alpha64",
+      "file": "candidate_probe_position_quadrant_alpha64.png",
+      "observed": "todo",
+      "x_post_url": "TODO",
+      "family": "position"
+    },
+    {
       "candidate": "probe_luma_ladder_alpha255",
       "file": "candidate_probe_luma_ladder_alpha255.png",
       "observed": "todo",
@@ -284,6 +301,10 @@
     }
   ],
   "conflicts": [],
+  "mapping_conflicts": {
+    "candidate_to_files": [],
+    "file_to_candidates": []
+  },
   "suggested_batches": {
     "controls": {
       "glow": {
@@ -338,6 +359,13 @@
         "family": "alpha"
       },
       {
+        "candidate": "probe_position_quadrant_alpha64",
+        "file": "candidate_probe_position_quadrant_alpha64.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "position"
+      },
+      {
         "candidate": "probe_luma_ladder_alpha255",
         "file": "candidate_probe_luma_ladder_alpha255.png",
         "observed": "todo",
@@ -364,13 +392,6 @@
         "observed": "whiteout",
         "x_post_url": "TODO",
         "family": "size"
-      },
-      {
-        "candidate": "probe_cicp_bt2020_pq_matrix_1",
-        "file": "candidate_probe_cicp_bt2020_pq_matrix_1.png",
-        "observed": "todo",
-        "x_post_url": "TODO",
-        "family": "cicp"
       }
     ],
     "priority_family_cap": 2,
@@ -395,6 +416,13 @@
         "observed": "todo",
         "x_post_url": "TODO",
         "family": "alpha"
+      },
+      {
+        "candidate": "probe_position_quadrant_alpha64",
+        "file": "candidate_probe_position_quadrant_alpha64.png",
+        "observed": "todo",
+        "x_post_url": "TODO",
+        "family": "position"
       },
       {
         "candidate": "probe_luma_ladder_alpha255",
@@ -437,19 +465,12 @@
         "observed": "whiteout",
         "x_post_url": "TODO",
         "family": "size"
-      },
-      {
-        "candidate": "probe_cicp_bt2020_pq_matrix_1",
-        "file": "candidate_probe_cicp_bt2020_pq_matrix_1.png",
-        "observed": "todo",
-        "x_post_url": "TODO",
-        "family": "cicp"
       }
     ],
     "targeted_followups": [
       {
         "name": "alpha_gradient_orientation_followup",
-        "reason": "`probe_alpha_gradient` が mixed のため、向き変更(RL/TB)でalpha依存と位置バイアスを切り分ける",
+        "reason": "`probe_alpha_gradient` が mixed のため、向き変更(RL/TB)と4象限同一パッチでalpha依存と位置バイアスを切り分ける",
         "items": [
           {
             "candidate": "probe_alpha_gradient_rl",
@@ -464,6 +485,13 @@
             "observed": "todo",
             "x_post_url": "TODO",
             "family": "alpha"
+          },
+          {
+            "candidate": "probe_position_quadrant_alpha64",
+            "file": "candidate_probe_position_quadrant_alpha64.png",
+            "observed": "todo",
+            "x_post_url": "TODO",
+            "family": "position"
           }
         ]
       },

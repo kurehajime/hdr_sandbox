@@ -15,7 +15,7 @@ DECISIVE_OBSERVED = {"glows", "not_glows", "mixed"}
 NON_DECISIVE_OBSERVED = {"whiteout", "blackout"}
 RESOLVED_OBSERVED = {"glows", "not_glows"}
 UNCERTAIN_LATEST_OBSERVED = NON_DECISIVE_OBSERVED.union({"mixed"})
-FAMILY_PRIORITY = ["cicp", "threshold", "isoeff", "alpha", "luma", "size", "probe_other", "success", "fail", "other"]
+FAMILY_PRIORITY = ["cicp", "threshold", "isoeff", "alpha", "position", "luma", "size", "probe_other", "success", "fail", "other"]
 DEFAULT_EXTRA_OBSERVATIONS_GLOB = "human-observations-*.md"
 
 
@@ -49,6 +49,8 @@ def infer_family(candidate: str) -> str:
         return "cicp"
     if candidate.startswith("probe_alpha_"):
         return "alpha"
+    if candidate.startswith("probe_position_"):
+        return "position"
     if candidate.startswith("probe_luma_"):
         return "luma"
     if candidate.startswith("probe_size_"):
@@ -283,7 +285,11 @@ def build_targeted_followups(
     if gradient and gradient.get("latest_observed") == "mixed":
         items = [
             pending_by_candidate[name]
-            for name in ["probe_alpha_gradient_rl", "probe_alpha_gradient_tb"]
+            for name in [
+                "probe_alpha_gradient_rl",
+                "probe_alpha_gradient_tb",
+                "probe_position_quadrant_alpha64",
+            ]
             if name in pending_by_candidate
         ]
         if items:
@@ -291,8 +297,8 @@ def build_targeted_followups(
                 {
                     "name": "alpha_gradient_orientation_followup",
                     "reason": (
-                        "`probe_alpha_gradient` が mixed のため、向き変更(RL/TB)で"
-                        "alpha依存と位置バイアスを切り分ける"
+                        "`probe_alpha_gradient` が mixed のため、向き変更(RL/TB)と"
+                        "4象限同一パッチでalpha依存と位置バイアスを切り分ける"
                     ),
                     "items": items,
                 }
@@ -390,6 +396,38 @@ def summarize_family_progress(
     return [progress[fam] for fam in ordered_families]
 
 
+def find_mapping_conflicts(
+    rows: list[dict[str, str]],
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    """candidate↔file 対応の不整合を検出する。"""
+    candidate_to_files: dict[str, set[str]] = defaultdict(set)
+    file_to_candidates: dict[str, set[str]] = defaultdict(set)
+
+    for r in rows:
+        candidate_to_files[r["candidate"]].add(r["file"])
+        file_to_candidates[r["file"]].add(r["candidate"])
+
+    candidate_conflicts = sorted(
+        [
+            {"candidate": candidate, "files": sorted(files)}
+            for candidate, files in candidate_to_files.items()
+            if len(files) >= 2
+        ],
+        key=lambda x: str(x["candidate"]),
+    )
+
+    file_conflicts = sorted(
+        [
+            {"file": file_name, "candidates": sorted(candidates)}
+            for file_name, candidates in file_to_candidates.items()
+            if len(candidates) >= 2 and file_name.upper() != "TODO"
+        ],
+        key=lambda x: str(x["file"]),
+    )
+
+    return candidate_conflicts, file_conflicts
+
+
 def simplify_row(row: dict[str, object]) -> dict[str, object]:
     """出力向けにcandidate行の主要項目だけを抽出する。"""
     candidate = str(row.get("candidate", ""))
@@ -412,6 +450,8 @@ def build_structured_report(
     family_progress: list[dict[str, object]],
     conflicts: list[dict[str, object]],
     retry_candidates: list[dict[str, object]],
+    mapping_conflicts_candidate: list[dict[str, object]],
+    mapping_conflicts_file: list[dict[str, object]],
     batch_size: int,
     batch_family_cap: int,
 ) -> dict[str, object]:
@@ -444,6 +484,8 @@ def build_structured_report(
             "conflicting_candidates": len(conflicts),
             "retry_candidates": len(retry_candidates),
             "missing_in_table": len(missing_in_table),
+            "mapping_conflicts_candidate": len(mapping_conflicts_candidate),
+            "mapping_conflicts_file": len(mapping_conflicts_file),
         },
         "family_progress": [
             {
@@ -473,6 +515,10 @@ def build_structured_report(
             }
             for c in conflicts
         ],
+        "mapping_conflicts": {
+            "candidate_to_files": mapping_conflicts_candidate,
+            "file_to_candidates": mapping_conflicts_file,
+        },
         "suggested_batches": {
             "controls": {
                 "glow": simplify_row(glow_control) if glow_control else None,
@@ -623,6 +669,8 @@ def build_report(
     family_progress: list[dict[str, object]],
     conflicts: list[dict[str, object]],
     retry_candidates: list[dict[str, object]],
+    mapping_conflicts_candidate: list[dict[str, object]],
+    mapping_conflicts_file: list[dict[str, object]],
     batch_size: int,
     batch_family_cap: int,
 ) -> str:
@@ -659,6 +707,8 @@ def build_report(
     lines.append(f"- conflicting_candidates: {len(conflicts)}")
     lines.append(f"- retry_candidates: {len(retry_candidates)}")
     lines.append(f"- missing_in_table: {len(missing_in_table)}")
+    lines.append(f"- mapping_conflicts_candidate: {len(mapping_conflicts_candidate)}")
+    lines.append(f"- mapping_conflicts_file: {len(mapping_conflicts_file)}")
     lines.append("")
 
     if family_progress:
@@ -702,10 +752,34 @@ def build_report(
             )
         lines.append("")
 
+    if mapping_conflicts_candidate:
+        lines.append("## Mapping conflicts (candidate -> multiple files)")
+        lines.append("")
+        lines.append("同一candidateに複数fileが紐づいているため、候補識別が不安定。表記ゆれを修正する。")
+        lines.append("")
+        lines.append("| candidate | files |")
+        lines.append("|---|---|")
+        for ent in mapping_conflicts_candidate:
+            files = ", ".join(f"`{f}`" for f in ent["files"])
+            lines.append(f"| `{ent['candidate']}` | {files} |")
+        lines.append("")
+
+    if mapping_conflicts_file:
+        lines.append("## Mapping conflicts (file -> multiple candidates)")
+        lines.append("")
+        lines.append("同一fileが複数candidate名で使われているため、観測履歴の対応が曖昧。")
+        lines.append("")
+        lines.append("| file | candidates |")
+        lines.append("|---|---|")
+        for ent in mapping_conflicts_file:
+            candidates = ", ".join(f"`{c}`" for c in ent["candidates"])
+            lines.append(f"| `{ent['file']}` | {candidates} |")
+        lines.append("")
+
     if pending_rows:
         lines.append("## Pending candidates (needs X posting / result entry)")
         lines.append("")
-        lines.append("優先順の目安: cicp → threshold/isoeff → alpha/luma → その他")
+        lines.append("優先順の目安: cicp → threshold/isoeff → alpha/position/luma → その他")
         lines.append("")
         for family in FAMILY_PRIORITY:
             if family not in by_family:
@@ -869,6 +943,11 @@ def main() -> None:
         action="store_true",
         help="同一candidateの decisive 観測が衝突したら終了コード2を返す",
     )
+    ap.add_argument(
+        "--strict-mapping",
+        action="store_true",
+        help="candidate↔file 対応に不整合（1対多/多対1）があれば終了コード2を返す",
+    )
     args = ap.parse_args()
 
     if args.batch_size <= 0:
@@ -930,6 +1009,7 @@ def main() -> None:
         ],
         key=lambda x: str(x["candidate"]),
     )
+    mapping_conflicts_candidate, mapping_conflicts_file = find_mapping_conflicts(rows)
 
     print(f"observation_files: {len(obs_paths)}")
     for p in obs_paths:
@@ -978,6 +1058,20 @@ def main() -> None:
         for name in sorted(missing_in_table):
             print(f"- {name}")
 
+    print(f"mapping_conflicts_candidate: {len(mapping_conflicts_candidate)}")
+    if mapping_conflicts_candidate:
+        print("mapping_conflicts_candidate_list:")
+        for ent in mapping_conflicts_candidate:
+            files = ",".join(str(f) for f in ent["files"])
+            print(f"- {ent['candidate']} ({files})")
+
+    print(f"mapping_conflicts_file: {len(mapping_conflicts_file)}")
+    if mapping_conflicts_file:
+        print("mapping_conflicts_file_list:")
+        for ent in mapping_conflicts_file:
+            candidates = ",".join(str(c) for c in ent["candidates"])
+            print(f"- {ent['file']} ({candidates})")
+
     if bad_observed:
         print("invalid_observed:")
         for x in bad_observed:
@@ -997,6 +1091,8 @@ def main() -> None:
             family_progress,
             conflicts,
             retry_candidates,
+            mapping_conflicts_candidate,
+            mapping_conflicts_file,
             batch_size=args.batch_size,
             batch_family_cap=args.batch_family_cap,
         )
@@ -1015,6 +1111,8 @@ def main() -> None:
             family_progress=family_progress,
             conflicts=conflicts,
             retry_candidates=retry_candidates,
+            mapping_conflicts_candidate=mapping_conflicts_candidate,
+            mapping_conflicts_file=mapping_conflicts_file,
             batch_size=args.batch_size,
             batch_family_cap=args.batch_family_cap,
         )
@@ -1047,6 +1145,9 @@ def main() -> None:
         raise SystemExit(2)
 
     if args.strict_conflict and conflicts:
+        raise SystemExit(2)
+
+    if args.strict_mapping and (mapping_conflicts_candidate or mapping_conflicts_file):
         raise SystemExit(2)
 
     print("OK")

@@ -18,6 +18,7 @@
 | probe_alpha_gradient | `candidate_probe_alpha_gradient.png` | TODO | TODO | TODO |
 | probe_alpha_gradient_rl | `candidate_probe_alpha_gradient_rl.png` | TODO | TODO | TODO |
 | probe_alpha_gradient_tb | `candidate_probe_alpha_gradient_tb.png` | TODO | TODO | TODO |
+| probe_position_quadrant_alpha64 | `candidate_probe_position_quadrant_alpha64.png` | TODO | TODO | TODO |
 | probe_alpha_lr_split_16_64 | `candidate_probe_alpha_lr_split_16_64.png` | TODO | TODO | TODO |
 | probe_alpha_ladder_1_255 | `candidate_probe_alpha_ladder_1_255.png` | TODO | TODO | TODO |
 | probe_luma_ladder_alpha255 | `candidate_probe_luma_ladder_alpha255.png` | TODO | TODO | TODO |

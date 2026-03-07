@@ -1,11 +1,13 @@
 # Human Observation Status Report
 
-- total_rows: 29
-- unique_candidates: 29
-- pending_rows: 21
+- total_rows: 30
+- unique_candidates: 30
+- pending_rows: 22
 - conflicting_candidates: 0
 - retry_candidates: 5
 - missing_in_table: 0
+- mapping_conflicts_candidate: 0
+- mapping_conflicts_file: 0
 
 ## Family progress (latest per candidate)
 
@@ -15,6 +17,7 @@
 | `threshold` | 1 | 1 | 0 | 0 | 100.0% |
 | `isoeff` | 1 | 0 | 0 | 1 | 0.0% |
 | `alpha` | 11 | 1 | 3 | 9 | 9.1% |
+| `position` | 1 | 0 | 0 | 1 | 0.0% |
 | `luma` | 2 | 0 | 0 | 2 | 0.0% |
 | `size` | 3 | 0 | 2 | 3 | 0.0% |
 | `probe_other` | 1 | 1 | 0 | 0 | 100.0% |
@@ -35,7 +38,7 @@
 
 ## Pending candidates (needs X posting / result entry)
 
-優先順の目安: cicp → threshold/isoeff → alpha/luma → その他
+優先順の目安: cicp → threshold/isoeff → alpha/position/luma → その他
 
 ### cicp
 
@@ -68,6 +71,12 @@
 | `probe_alpha_0` | `candidate_probe_alpha_0.png` | `whiteout` | TODO |
 | `probe_alpha_1` | `candidate_probe_alpha_1.png` | `whiteout` | TODO |
 
+### position
+
+| candidate | file | observed | x_post_url |
+|---|---|---|---|
+| `probe_position_quadrant_alpha64` | `candidate_probe_position_quadrant_alpha64.png` | `todo` | TODO |
+
 ### luma
 
 | candidate | file | observed | x_post_url |
@@ -99,11 +108,11 @@
 - `candidate_probe_isoeff_triplet.png` (probe_isoeff_triplet / observed=todo / url=TODO)
 - `candidate_probe_alpha_16.png` (probe_alpha_16 / observed=todo / url=TODO)
 - `candidate_probe_alpha_64.png` (probe_alpha_64 / observed=todo / url=TODO)
+- `candidate_probe_position_quadrant_alpha64.png` (probe_position_quadrant_alpha64 / observed=todo / url=TODO)
 - `candidate_probe_luma_ladder_alpha255.png` (probe_luma_ladder_alpha255 / observed=todo / url=TODO)
 - `candidate_probe_luma_ladder_alpha64.png` (probe_luma_ladder_alpha64 / observed=todo / url=TODO)
 - `candidate_probe_size_512_alpha255_bright_patch.png` (probe_size_512_alpha255_bright_patch / observed=todo / url=TODO)
 - `candidate_probe_size_512.png` (probe_size_512 / observed=whiteout / url=TODO)
-- `candidate_probe_cicp_bt2020_pq_matrix_1.png` (probe_cicp_bt2020_pq_matrix_1 / observed=todo / url=TODO)
 
 ### 1b) 次バッチ候補（多様性重視・family round-robin / 最大 10 件）
 
@@ -112,21 +121,22 @@
 - `candidate_probe_cicp_bt2020_pq.png` (probe_cicp_bt2020_pq / family=cicp / observed=todo / url=TODO)
 - `candidate_probe_isoeff_triplet.png` (probe_isoeff_triplet / family=isoeff / observed=todo / url=TODO)
 - `candidate_probe_alpha_16.png` (probe_alpha_16 / family=alpha / observed=todo / url=TODO)
+- `candidate_probe_position_quadrant_alpha64.png` (probe_position_quadrant_alpha64 / family=position / observed=todo / url=TODO)
 - `candidate_probe_luma_ladder_alpha255.png` (probe_luma_ladder_alpha255 / family=luma / observed=todo / url=TODO)
 - `candidate_probe_size_512_alpha255_bright_patch.png` (probe_size_512_alpha255_bright_patch / family=size / observed=todo / url=TODO)
 - `candidate_probe_cicp_bt2020_pq_limited.png` (probe_cicp_bt2020_pq_limited / family=cicp / observed=todo / url=TODO)
 - `candidate_probe_alpha_64.png` (probe_alpha_64 / family=alpha / observed=todo / url=TODO)
 - `candidate_probe_luma_ladder_alpha64.png` (probe_luma_ladder_alpha64 / family=luma / observed=todo / url=TODO)
 - `candidate_probe_size_512.png` (probe_size_512 / family=size / observed=whiteout / url=TODO)
-- `candidate_probe_cicp_bt2020_pq_matrix_1.png` (probe_cicp_bt2020_pq_matrix_1 / family=cicp / observed=todo / url=TODO)
 
 ### 1c) ターゲット追試パック（観測トリガー連動）
 
 既存観測の結果から、優先して切り分けたい小規模パックを抽出。
 
-- `alpha_gradient_orientation_followup`: `probe_alpha_gradient` が mixed のため、向き変更(RL/TB)でalpha依存と位置バイアスを切り分ける
+- `alpha_gradient_orientation_followup`: `probe_alpha_gradient` が mixed のため、向き変更(RL/TB)と4象限同一パッチでalpha依存と位置バイアスを切り分ける
   - `candidate_probe_alpha_gradient_rl.png` (probe_alpha_gradient_rl / observed=todo / url=TODO)
   - `candidate_probe_alpha_gradient_tb.png` (probe_alpha_gradient_tb / observed=todo / url=TODO)
+  - `candidate_probe_position_quadrant_alpha64.png` (probe_position_quadrant_alpha64 / observed=todo / url=TODO)
 - `size_512_brightness_recovery_followup`: `probe_size_512` と `probe_size_512_nontransparent` が非決定結果のため、bright patch条件で輝度不足由来かを検証する
   - `candidate_probe_size_512_alpha255_bright_patch.png` (probe_size_512_alpha255_bright_patch / observed=todo / url=TODO)
 - `alpha_floor_threshold_followup`: 低alpha(0/1)が非決定結果のため、16/64と左右同時比較で可視しきい値帯を絞り込む

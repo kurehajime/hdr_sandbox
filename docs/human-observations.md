@@ -16,6 +16,7 @@
 | probe_alpha_gradient | `candidate_probe_alpha_gradient.png` | mixed | https://x.com/kurehajime/status/2030244873153175737 | 右半分のみ光る。左半分は黒っぽく見える |
 | probe_alpha_gradient_rl | `candidate_probe_alpha_gradient_rl.png` | todo | TODO | 未投稿: 右→左グラデーション。発光側が反転するか確認 |
 | probe_alpha_gradient_tb | `candidate_probe_alpha_gradient_tb.png` | todo | TODO | 未投稿: 上→下グラデーション。左右固定UI要因を切り分け |
+| probe_position_quadrant_alpha64 | `candidate_probe_position_quadrant_alpha64.png` | todo | TODO | 未投稿: 4象限同一パッチで位置依存バイアスを確認 |
 | probe_alpha_1 | `candidate_probe_alpha_1.png` | whiteout | TODO | 真っ白でなにも見えず |
 | probe_size_512_nontransparent | `candidate_probe_size_512_nontransparent.png` | blackout | TODO | 真っ黒でなにも見えず |
 | probe_cicp_bt2020_pq | `candidate_probe_cicp_bt2020_pq.png` | todo | TODO | 新規: cicp比較の基準（既存alpha=64相当） |

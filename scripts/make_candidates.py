@@ -230,6 +230,46 @@ CICP_VARIANTS = [
 ]
 
 
+def _make_position_quadrant_pattern(
+    *,
+    width: int = 400,
+    height: int = 400,
+    alpha_8bit: int = 64,
+    luma_16bit: int = 65535,
+) -> np.ndarray:
+    """4象限に同一パッチを配置し、位置依存バイアスを直接観測する。"""
+    arr = np.zeros((height, width, 4), dtype=np.uint16)
+    arr[:, :, :3] = 1024
+    arr[:, :, 3] = 65535
+
+    patch_w = max(24, width // 6)
+    patch_h = max(24, height // 6)
+    cx = [width // 4, (width * 3) // 4]
+    cy = [height // 4, (height * 3) // 4]
+
+    lv = np.uint16(max(0, min(65535, luma_16bit)))
+    a16 = np.uint16(max(0, min(255, alpha_8bit)) * 257)
+
+    for y in cy:
+        for x in cx:
+            x0 = max(0, x - patch_w // 2)
+            x1 = min(width, x0 + patch_w)
+            y0 = max(0, y - patch_h // 2)
+            y1 = min(height, y0 + patch_h)
+            arr[y0:y1, x0:x1, :3] = lv
+            arr[y0:y1, x0:x1, 3] = a16
+
+    # 位置の見分け用ガイド（中央十字）
+    mx = width // 2
+    my = height // 2
+    arr[:, max(0, mx - 1) : min(width, mx + 1), :3] = 0
+    arr[:, max(0, mx - 1) : min(width, mx + 1), 3] = 65535
+    arr[max(0, my - 1) : min(height, my + 1), :, :3] = 0
+    arr[max(0, my - 1) : min(height, my + 1), :, 3] = 65535
+
+    return arr
+
+
 def _make_lr_split_pattern(*, width: int = 400, height: int = 400) -> np.ndarray:
     """左右比較しやすい単純パターン（左=低alpha、右=高alpha）。"""
     arr = np.zeros((height, width, 4), dtype=np.uint16)
@@ -621,6 +661,12 @@ def build_candidates(
         arr16_alpha_luma_matrix = _make_alpha_luma_matrix_pattern(width=400, height=400)
         arr16_isoeff_triplet, isoeff_spec_rows = _make_isoeff_triplet_pattern(width=400, height=400)
         arr16_threshold_zoom_matrix = _make_threshold_zoom_matrix_pattern(width=400, height=400)
+        arr16_position_quadrant_alpha64 = _make_position_quadrant_pattern(
+            width=400,
+            height=400,
+            alpha_8bit=64,
+            luma_16bit=65535,
+        )
 
         targets.extend(
             [
@@ -692,6 +738,14 @@ def build_candidates(
                     "probe_alpha_gradient_tb",
                     outdir / "candidate_probe_alpha_gradient_tb.png",
                     arr16_alpha_grad_tb,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
+                    "probe_position_quadrant_alpha64",
+                    outdir / "candidate_probe_position_quadrant_alpha64.png",
+                    arr16_position_quadrant_alpha64,
                     16,
                     6,
                     icc_success,
@@ -893,6 +947,24 @@ def build_candidates(
             "  - 左右だけ偏る: 左右固定UI要因の疑いが強い",
         ]
         (outdir / "alpha_gradient_orientation_spec.md").write_text("\n".join(gradient_lines), encoding="utf-8")
+
+        position_lines = [
+            "# Position Quadrant Spec (auto-generated)",
+            "",
+            "`candidate_probe_position_quadrant_alpha64.png` は 4象限に同一パッチを置き、",
+            "画面位置依存のバイアス（右側だけ光る等）を直接確認するプローブです。",
+            "",
+            "固定条件:",
+            "- patch luma: 65535 (RGBすべて最大)",
+            "- patch alpha: 64 (8bit) / 16448 (16bit)",
+            "- 背景: luma=1024, alpha=65535",
+            "",
+            "観測ポイント:",
+            "- 4象限で同一条件にも関わらず発光差が出るか",
+            "- 右側のみ光るなら、alpha値ではなく位置依存要因を優先疑い",
+            "- 4象限すべて同等なら、`alpha_gradient` の偏りは連続勾配条件固有の可能性",
+        ]
+        (outdir / "position_quadrant_spec.md").write_text("\n".join(position_lines), encoding="utf-8")
 
         luma_lines = [
             "# Luma Ladder Spec (auto-generated)",
@@ -1096,6 +1168,7 @@ def write_report(results: list[CandidateResult], path: Path, *, extended: bool) 
                 "- `probe_alpha_gradient`: alphaを1..65535で連続変化（alpha依存の境界を観測）",
                 "- `probe_alpha_gradient_rl`: 右→左グラデーションで左右位置バイアスを切り分け",
                 "- `probe_alpha_gradient_tb`: 上→下グラデーションで左右固定UI要因を切り分け",
+                "- `probe_position_quadrant_alpha64`: 4象限に同一パッチを配置し、位置依存バイアスを直接観測",
                 "- `probe_alpha_lr_split_16_64`: 左右分割（左alpha=16 / 右alpha=64）で見え方を即比較",
                 "- `probe_alpha_ladder_1_255`: alpha段階(1..255)の縦バーで発光しきい値の概算を1枚で観測",
                 "- `probe_luma_ladder_alpha255` / `probe_luma_ladder_alpha64`: RGB段階バー（alpha固定）で実効輝度しきい値を探索",
