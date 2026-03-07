@@ -84,6 +84,9 @@
 - `candidate_probe_alpha_lr_split_16_64.png`
   - 左右分割で左alpha=16 / 右alpha=64
   - 同一画像内でしきい値境界を観測しやすくする
+- `candidate_probe_alpha_ladder_1_255.png`
+  - alpha段階バー（1,2,4,8,16,24,32,48,64,96,128,192,255）
+  - 1投稿内で「どのalphaから光るか」を概算する
 - `candidate_probe_size_512_alpha255_bright_patch.png`
   - 512x512 + alpha=255固定 + 右側に高輝度パッチ
   - 512黒化が「全体輝度不足」か「メタデータ経路問題」かを切り分け

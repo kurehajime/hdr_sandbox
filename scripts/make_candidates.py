@@ -191,6 +191,9 @@ def _resize_like(arr: np.ndarray, size: tuple[int, int]) -> np.ndarray:
     return np.array(pil.resize(size, Image.Resampling.LANCZOS), dtype=arr.dtype)
 
 
+ALPHA_LADDER_VALUES = [1, 2, 4, 8, 16, 24, 32, 48, 64, 96, 128, 192, 255]
+
+
 def _make_lr_split_pattern(*, width: int = 400, height: int = 400) -> np.ndarray:
     """左右比較しやすい単純パターン（左=低alpha、右=高alpha）。"""
     arr = np.zeros((height, width, 4), dtype=np.uint16)
@@ -214,6 +217,42 @@ def _make_lr_split_pattern(*, width: int = 400, height: int = 400) -> np.ndarray
 
     arr[y0:y1, x0_l:x1_l, :3] = 65535
     arr[y0:y1, x0_r:x1_r, :3] = 65535
+
+    return arr
+
+
+def _make_alpha_ladder_pattern(
+    *,
+    width: int = 400,
+    height: int = 400,
+    alphas: list[int] | None = None,
+) -> np.ndarray:
+    """縦バーごとにalphaを段階化し、しきい値境界を1枚で観測しやすくする。"""
+    alpha_values = ALPHA_LADDER_VALUES if alphas is None else alphas
+    if not alpha_values:
+        raise ValueError("alpha_values must not be empty")
+
+    arr = np.zeros((height, width, 4), dtype=np.uint16)
+    arr[:, :, :3] = 1024  # 低輝度背景
+    arr[:, :, 3] = 65535  # 背景は不透明で固定
+
+    # 観測ターゲットのバーを中央帯に配置（上下は比較用背景）
+    y0 = height // 4
+    y1 = (height * 3) // 4
+
+    n = len(alpha_values)
+    for i, a8 in enumerate(alpha_values):
+        x0 = (i * width) // n
+        x1 = ((i + 1) * width) // n
+
+        # バー内は高輝度色、alphaのみ段階化
+        arr[y0:y1, x0:x1, :3] = 65535
+        arr[y0:y1, x0:x1, 3] = np.uint16(a8 * 257)
+
+        # 境界視認性のため縦セパレータを挿入
+        if x0 > 0:
+            arr[:, x0 - 1 : x0 + 1, :3] = 0
+            arr[:, x0 - 1 : x0 + 1, 3] = 65535
 
     return arr
 
@@ -303,6 +342,7 @@ def build_candidates(
         arr16_rgba_512_bright_patch[y0:y1, x0:x1, :3] = 65535
 
         arr16_lr_split = _make_lr_split_pattern(width=400, height=400)
+        arr16_alpha_ladder = _make_alpha_ladder_pattern(width=400, height=400)
 
         targets.extend(
             [
@@ -371,6 +411,14 @@ def build_candidates(
                     icc_success,
                 ),
                 (
+                    "probe_alpha_ladder_1_255",
+                    outdir / "candidate_probe_alpha_ladder_1_255.png",
+                    arr16_alpha_ladder,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
                     "probe_size_512",
                     outdir / "candidate_probe_size_512.png",
                     arr16_rgba_512,
@@ -421,6 +469,28 @@ def build_candidates(
     # 参照ICCも保存
     (outdir / "icc_bt2020_pq_from_success.icc").write_bytes(icc_success)
 
+    if extended:
+        ladder_lines = [
+            "# Alpha Ladder Spec (auto-generated)",
+            "",
+            "`candidate_probe_alpha_ladder_1_255.png` の中央帯は左→右で以下の alpha(8bit) を使用:",
+            "",
+            "| lane | alpha_8bit | alpha_16bit | normalized |",
+            "|---:|---:|---:|---:|",
+        ]
+        for i, a8 in enumerate(ALPHA_LADDER_VALUES, start=1):
+            a16 = a8 * 257
+            ladder_lines.append(f"| {i} | {a8} | {a16} | {a8 / 255:.4f} |")
+        ladder_lines.extend(
+            [
+                "",
+                "観測ポイント:",
+                "- どのlaneから『光って見える』か（発光しきい値）",
+                "- しきい値近傍で白化/黒化/通常表示のどれが起きるか",
+            ]
+        )
+        (outdir / "alpha_ladder_spec.md").write_text("\n".join(ladder_lines), encoding="utf-8")
+
     return results
 
 
@@ -459,6 +529,7 @@ def write_report(results: list[CandidateResult], path: Path, *, extended: bool) 
                 "- `probe_alpha_1` / `probe_alpha_16` / `probe_alpha_64`: 極小alpha域の表示しきい値を探索",
                 "- `probe_alpha_gradient`: alphaを1..65535で連続変化（alpha依存の境界を観測）",
                 "- `probe_alpha_lr_split_16_64`: 左右分割（左alpha=16 / 右alpha=64）で見え方を即比較",
+                "- `probe_alpha_ladder_1_255`: alpha段階(1..255)の縦バーで発光しきい値の概算を1枚で観測",
                 "- `probe_size_512`: 512化のみ（従来観測の再確認）",
                 "- `probe_size_512_nontransparent`: 512 + alpha=255固定（サイズ要因と透明要因の切り分け）",
                 "- `probe_size_512_alpha255_bright_patch`: 512 + alpha=255 + 右側高輝度パッチ（実効輝度しきい値を確認）",
