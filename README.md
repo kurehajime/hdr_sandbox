@@ -14,6 +14,8 @@ X向けHDR画像投稿の再現調査リポジトリ。
 
 ## 検証スクリプト
 
+### 1) PNGプロファイル確認
+
 ```bash
 python3 scripts/check_png_hdr.py path/to/image.png
 ```
@@ -24,3 +26,22 @@ python3 scripts/check_png_hdr.py path/to/image.png
 - iCCPの有無
 - ICC内cicp値
 - 成功プロファイル一致判定 (`match_target_profile`)
+
+### 2) 再現候補の一括生成（成功/失敗比較）
+
+```bash
+python3 scripts/make_candidates.py \
+  --input sample/success_sample.png \
+  --success-ref sample/success_sample.png \
+  --outdir generated
+```
+
+出力:
+
+- `generated/candidate_success_like.png`
+- `generated/candidate_fail_8bit.png`
+- `generated/candidate_fail_no_iccp.png`
+- `generated/candidate_fail_rgb_no_alpha.png`
+- `generated/comparison.md`（比較表）
+
+詳細は `docs/reproduction-candidates.md` を参照。
