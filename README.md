@@ -46,7 +46,17 @@ npm run precheck:post
 ```
 
 - `check_png_hdr.py` と `check_human_observations.py` を順に実行
+- レポート出力先の日付は JST 当日 (`docs/observation-status-YYYY-MM-DD.*`)
 - 途中で失敗した時点で終了コードを返す
+
+### 4) 生成→投稿前チェックを一気に実行
+
+```bash
+npm run impl:run
+```
+
+- 実装フェーズでの最短ルート（生成 + precheck）
+- `npm run gen` には Python フォールバックが入っているので、JS/WASMが失敗しても継続可能
 
 ## 検証スクリプト
 

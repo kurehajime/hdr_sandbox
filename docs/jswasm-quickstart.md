@@ -16,11 +16,20 @@ npm run gen
 ```
 
 - JS/WASM が落ちたら自動で Python 生成に切り替わる。
+- フォールバック経路だけ試す場合は `HDR_FORCE_PY_FALLBACK=1 npm run gen`。
 
 ## 3. 投稿前チェック（1コマンド）
 
 ```bash
 npm run precheck:post
+```
+
+- 出力先日付は JST 当日を自動採番 (`docs/observation-status-YYYY-MM-DD.*`)。
+
+## 4. 最短ワンライナー（実装フェーズ）
+
+```bash
+npm run impl:run
 ```
 
 ## 実装ファイル

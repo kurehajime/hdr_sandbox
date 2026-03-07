@@ -1,6 +1,19 @@
 #!/usr/bin/env node
 import { runMinimalPipeline } from "./pipeline.mjs";
 
+function usage() {
+  console.log(`Usage: node src/jswasm-pipeline/cli.mjs [options]
+
+Options:
+  --success-ref <path>    source PNG with iCCP (default: sample/success_sample.png)
+  --outdir <dir>          output directory (default: generated)
+  --width <n>             output width (default: 400)
+  --height <n>            output height (default: 400)
+  --alpha8-patch <0-255> patch alpha in 8bit space (default: 64)
+  -h, --help              show this help
+`);
+}
+
 function parseArgs(argv) {
   const args = {
     successRef: "sample/success_sample.png",
@@ -13,7 +26,10 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     const v = argv[i + 1];
-    if (a === "--success-ref" && v) {
+    if (a === "-h" || a === "--help") {
+      usage();
+      process.exit(0);
+    } else if (a === "--success-ref" && v) {
       args.successRef = v;
       i += 1;
     } else if (a === "--outdir" && v) {
@@ -28,6 +44,8 @@ function parseArgs(argv) {
     } else if (a === "--alpha8-patch" && v) {
       args.alpha8Patch = Number(v);
       i += 1;
+    } else {
+      throw new Error(`unknown arg: ${a}`);
     }
   }
 

@@ -32,18 +32,31 @@ function crc32(buffer) {
   return (c ^ 0xffffffff) >>> 0;
 }
 
+function clampInt(v, min, max, label) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) {
+    throw new Error(`${label} must be finite number`);
+  }
+  return Math.min(max, Math.max(min, Math.trunc(n)));
+}
+
 export async function extractIccFromPng(pngPath) {
   const b = await fs.readFile(pngPath);
-  if (!b.subarray(0, 8).equals(PNG_SIG)) {
+  if (b.length < 8 || !b.subarray(0, 8).equals(PNG_SIG)) {
     throw new Error(`not png: ${pngPath}`);
   }
 
   let o = 8;
-  while (o < b.length) {
+  while (o + 8 <= b.length) {
     const ln = b.readUInt32BE(o);
     o += 4;
     const typ = b.subarray(o, o + 4).toString("ascii");
     o += 4;
+
+    if (o + ln + 4 > b.length) {
+      throw new Error(`corrupted png chunk: ${pngPath}`);
+    }
+
     const data = b.subarray(o, o + ln);
     o += ln + 4;
 
@@ -142,15 +155,19 @@ export async function writeRgba16Png({ outPath, width, height, rgba16be, iccProf
 }
 
 export async function runMinimalPipeline({ successRef, outdir, width = 400, height = 400, alpha8Patch = 64 }) {
+  const w = clampInt(width, 16, 4096, "width");
+  const h = clampInt(height, 16, 4096, "height");
+  const a8 = clampInt(alpha8Patch, 0, 255, "alpha8Patch");
+
   const icc = await extractIccFromPng(successRef);
   const op = await loadMulDiv255();
-  const pattern = buildMinimalPattern({ width, height, alpha8Patch, mulDiv255: op.mulDiv255 });
+  const pattern = buildMinimalPattern({ width: w, height: h, alpha8Patch: a8, mulDiv255: op.mulDiv255 });
 
   const successPath = path.join(outdir, "candidate_success_like.png");
   const noIccPath = path.join(outdir, "candidate_fail_no_iccp.png");
 
-  await writeRgba16Png({ outPath: successPath, width, height, rgba16be: pattern, iccProfile: icc });
-  await writeRgba16Png({ outPath: noIccPath, width, height, rgba16be: pattern, iccProfile: null });
+  await writeRgba16Png({ outPath: successPath, width: w, height: h, rgba16be: pattern, iccProfile: icc });
+  await writeRgba16Png({ outPath: noIccPath, width: w, height: h, rgba16be: pattern, iccProfile: null });
 
   return {
     wasmMode: op.mode,
