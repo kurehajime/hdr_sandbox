@@ -191,6 +191,33 @@ def _resize_like(arr: np.ndarray, size: tuple[int, int]) -> np.ndarray:
     return np.array(pil.resize(size, Image.Resampling.LANCZOS), dtype=arr.dtype)
 
 
+def _make_lr_split_pattern(*, width: int = 400, height: int = 400) -> np.ndarray:
+    """左右比較しやすい単純パターン（左=低alpha、右=高alpha）。"""
+    arr = np.zeros((height, width, 4), dtype=np.uint16)
+
+    # 背景は低輝度グレー
+    arr[:, :, :3] = 1024
+    mid = width // 2
+    arr[:, :mid, 3] = 16
+    arr[:, mid:, 3] = 64
+
+    # 視認しやすいよう、左右に同形状の高輝度パッチを配置
+    patch_w = width // 5
+    patch_h = height // 5
+    y0 = height // 2 - patch_h // 2
+    y1 = y0 + patch_h
+
+    x0_l = mid // 2 - patch_w // 2
+    x1_l = x0_l + patch_w
+    x0_r = mid + (mid // 2) - patch_w // 2
+    x1_r = x0_r + patch_w
+
+    arr[y0:y1, x0_l:x1_l, :3] = 65535
+    arr[y0:y1, x0_r:x1_r, :3] = 65535
+
+    return arr
+
+
 def build_candidates(
     input_path: Path,
     success_ref: Path,
@@ -252,6 +279,10 @@ def build_candidates(
         arr16_alpha0[:, :, 3] = 0
         arr16_alpha1 = arr16_rgba.copy()
         arr16_alpha1[:, :, 3] = 1
+        arr16_alpha16 = arr16_rgba.copy()
+        arr16_alpha16[:, :, 3] = 16
+        arr16_alpha64 = arr16_rgba.copy()
+        arr16_alpha64[:, :, 3] = 64
 
         # 左→右に alpha を 1..65535 でグラデーション（0は使わない）
         arr16_alpha_grad = arr16_rgba.copy()
@@ -261,6 +292,17 @@ def build_candidates(
         arr16_rgba_512 = _resize_like(arr16_rgba, (512, 512))
         arr16_rgba_512_alpha255 = arr16_rgba_512.copy()
         arr16_rgba_512_alpha255[:, :, 3] = 65535
+
+        arr16_rgba_512_bright_patch = arr16_rgba_512_alpha255.copy()
+        h512, w512, _ = arr16_rgba_512_bright_patch.shape
+        patch = max(64, min(w512, h512) // 4)
+        y0 = h512 // 2 - patch // 2
+        y1 = y0 + patch
+        x0 = (w512 * 3) // 4 - patch // 2
+        x1 = x0 + patch
+        arr16_rgba_512_bright_patch[y0:y1, x0:x1, :3] = 65535
+
+        arr16_lr_split = _make_lr_split_pattern(width=400, height=400)
 
         targets.extend(
             [
@@ -297,9 +339,33 @@ def build_candidates(
                     icc_success,
                 ),
                 (
+                    "probe_alpha_16",
+                    outdir / "candidate_probe_alpha_16.png",
+                    arr16_alpha16,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
+                    "probe_alpha_64",
+                    outdir / "candidate_probe_alpha_64.png",
+                    arr16_alpha64,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
                     "probe_alpha_gradient",
                     outdir / "candidate_probe_alpha_gradient.png",
                     arr16_alpha_grad,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
+                    "probe_alpha_lr_split_16_64",
+                    outdir / "candidate_probe_alpha_lr_split_16_64.png",
+                    arr16_lr_split,
                     16,
                     6,
                     icc_success,
@@ -316,6 +382,14 @@ def build_candidates(
                     "probe_size_512_nontransparent",
                     outdir / "candidate_probe_size_512_nontransparent.png",
                     arr16_rgba_512_alpha255,
+                    16,
+                    6,
+                    icc_success,
+                ),
+                (
+                    "probe_size_512_alpha255_bright_patch",
+                    outdir / "candidate_probe_size_512_alpha255_bright_patch.png",
+                    arr16_rgba_512_bright_patch,
                     16,
                     6,
                     icc_success,
@@ -382,10 +456,12 @@ def write_report(results: list[CandidateResult], path: Path, *, extended: bool) 
                 "extended候補の狙い:",
                 "- `probe_8bit_rgb_no_alpha`: 8bit と no-alpha を同時適用（2x2切り分けの第4点）",
                 "- `probe_alpha_255` / `probe_alpha_0`: alpha=255 と alpha=0 の極端条件を比較",
-                "- `probe_alpha_1`: alpha=1固定（完全透明を避けつつ極小alphaを確認）",
-                "- `probe_alpha_gradient`: alphaを1..65535で連続変化（alpha=0依存の白化を回避して観測）",
+                "- `probe_alpha_1` / `probe_alpha_16` / `probe_alpha_64`: 極小alpha域の表示しきい値を探索",
+                "- `probe_alpha_gradient`: alphaを1..65535で連続変化（alpha依存の境界を観測）",
+                "- `probe_alpha_lr_split_16_64`: 左右分割（左alpha=16 / 右alpha=64）で見え方を即比較",
                 "- `probe_size_512`: 512化のみ（従来観測の再確認）",
                 "- `probe_size_512_nontransparent`: 512 + alpha=255固定（サイズ要因と透明要因の切り分け）",
+                "- `probe_size_512_alpha255_bright_patch`: 512 + alpha=255 + 右側高輝度パッチ（実効輝度しきい値を確認）",
             ]
         )
 
