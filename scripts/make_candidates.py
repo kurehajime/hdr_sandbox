@@ -93,6 +93,27 @@ def parse_cicp_from_icc(icc: bytes) -> list[int] | None:
     return None
 
 
+def patch_icc_cicp(icc: bytes, cicp_values: list[int]) -> bytes:
+    if len(cicp_values) != 4:
+        raise ValueError("cicp_values must be [primaries, transfer, matrix, range]")
+    if len(icc) < 132:
+        raise ValueError("invalid icc: too small")
+
+    tag_count = struct.unpack(">I", icc[128:132])[0]
+    out = bytearray(icc)
+    for i in range(tag_count):
+        off = 132 + i * 12
+        if off + 12 > len(icc):
+            break
+        sig = icc[off : off + 4]
+        to, sz = struct.unpack(">II", icc[off + 4 : off + 12])
+        if sig.lower() == b"cicp" and to + sz <= len(icc) and sz >= 12:
+            out[to + 8 : to + 12] = bytes(cicp_values)
+            return bytes(out)
+
+    raise ValueError("cicp tag not found in ICC profile")
+
+
 def write_png(
     path: Path,
     arr: np.ndarray,
@@ -199,6 +220,12 @@ ISOEFF_ALPHA_VALUES = [8, 12, 16, 24, 32, 48, 64, 96, 128, 160, 192, 224, 255]
 ISOEFF_EFFECTIVE_LEVELS = [0.06, 0.10, 0.16]
 THRESHOLD_ZOOM_ALPHA_VALUES = [12, 16, 20, 24, 28, 32, 40, 48, 56, 64, 80, 96]
 THRESHOLD_ZOOM_LUMA_VALUES = [4096, 6144, 8192, 10240, 12288, 14336, 16384, 20480, 24576, 28672, 32768, 40960]
+CICP_VARIANTS = [
+    ("bt2020_pq", [9, 16, 0, 1]),
+    ("bt2020_srgb", [9, 13, 0, 1]),
+    ("bt709_pq", [1, 16, 0, 1]),
+    ("bt709_srgb", [1, 13, 0, 1]),
+]
 
 
 def _make_lr_split_pattern(*, width: int = 400, height: int = 400) -> np.ndarray:
@@ -500,6 +527,10 @@ def build_candidates(
     arr16_rgba = arr8_rgba.astype(np.uint16) * 257
 
     icc_success = extract_icc_from_png(success_ref)
+    icc_variants = {
+        name: patch_icc_cicp(icc_success, cicp)
+        for name, cicp in CICP_VARIANTS
+    }
 
     text = {
         "generator": "scripts/make_candidates.py",
@@ -693,6 +724,38 @@ def build_candidates(
                     16,
                     6,
                     icc_success,
+                ),
+                (
+                    "probe_cicp_bt2020_pq",
+                    outdir / "candidate_probe_cicp_bt2020_pq.png",
+                    arr16_alpha64,
+                    16,
+                    6,
+                    icc_variants["bt2020_pq"],
+                ),
+                (
+                    "probe_cicp_bt2020_srgb",
+                    outdir / "candidate_probe_cicp_bt2020_srgb.png",
+                    arr16_alpha64,
+                    16,
+                    6,
+                    icc_variants["bt2020_srgb"],
+                ),
+                (
+                    "probe_cicp_bt709_pq",
+                    outdir / "candidate_probe_cicp_bt709_pq.png",
+                    arr16_alpha64,
+                    16,
+                    6,
+                    icc_variants["bt709_pq"],
+                ),
+                (
+                    "probe_cicp_bt709_srgb",
+                    outdir / "candidate_probe_cicp_bt709_srgb.png",
+                    arr16_alpha64,
+                    16,
+                    6,
+                    icc_variants["bt709_srgb"],
                 ),
                 (
                     "probe_size_512",
@@ -903,6 +966,30 @@ def build_candidates(
         )
         (outdir / "threshold_zoom_matrix_spec.md").write_text("\n".join(threshold_lines), encoding="utf-8")
 
+        cicp_lines = [
+            "# CICP Variant Spec (auto-generated)",
+            "",
+            "`candidate_probe_cicp_*.png` は、同一ピクセル（alpha=64固定）で ICC 内 cicp だけを切り替える比較セットです。",
+            "",
+            "| probe | primaries | transfer | matrix | range | cicp |",
+            "|---|---:|---:|---:|---:|---|",
+        ]
+        for name, cicp in CICP_VARIANTS:
+            probe_name = f"candidate_probe_cicp_{name}.png"
+            cicp_lines.append(
+                f"| `{probe_name}` | {cicp[0]} | {cicp[1]} | {cicp[2]} | {cicp[3]} | {cicp} |"
+            )
+        cicp_lines.extend(
+            [
+                "",
+                "観測ポイント:",
+                "- `bt2020_pq` を基準に、`bt2020_srgb` で非発光化するか（transfer要因）",
+                "- `bt709_pq` / `bt709_srgb` の差で primaries 要因が見えるか",
+                "- 4条件の見え方が transfer 主導か、primaries 主導か、交互作用かを判定する",
+            ]
+        )
+        (outdir / "cicp_variant_spec.md").write_text("\n".join(cicp_lines), encoding="utf-8")
+
     return results
 
 
@@ -946,11 +1033,47 @@ def write_report(results: list[CandidateResult], path: Path, *, extended: bool) 
                 "- `probe_alpha_luma_matrix`: 2Dグリッド（x=alpha, y=luma）でしきい値境界形状を1枚で観測",
                 "- `probe_isoeff_triplet`: 3行帯で目標effectiveを固定し、列方向alpha変化に対する均一性を検証",
                 "- `probe_threshold_zoom_matrix`: alpha/lumaの境界近傍を高密度サンプリングし、境界線を細かく追跡",
+                "- `probe_cicp_bt2020_pq` / `probe_cicp_bt2020_srgb` / `probe_cicp_bt709_pq` / `probe_cicp_bt709_srgb`: 同一ピクセルでICC内cicpのみを切替え、transfer/primaries寄与を比較",
                 "- `probe_size_512`: 512化のみ（従来観測の再確認）",
                 "- `probe_size_512_nontransparent`: 512 + alpha=255固定（サイズ要因と透明要因の切り分け）",
                 "- `probe_size_512_alpha255_bright_patch`: 512 + alpha=255 + 右側高輝度パッチ（実効輝度しきい値を確認）",
             ]
         )
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def write_human_observation_template(results: list[CandidateResult], path: Path) -> None:
+    """人間の投稿結果を別ファイルで追記しやすいテンプレートを出力する。"""
+    lines = [
+        "# Human Observations Template (auto-generated)",
+        "",
+        "このファイルは `docs/human-observations.md` に転記して使うテンプレートです。",
+        "`docs/hypothesis-update-2026-03-07.md` ではなく、専用ファイルに人間観測を追記してください。",
+        "",
+        "| candidate | file | observed | x_post_url | notes |",
+        "|---|---|---|---|---|",
+    ]
+
+    for r in results:
+        lines.append(f"| {r.name} | `{r.path.name}` | TODO | TODO | TODO |")
+
+    lines.extend(
+        [
+            "",
+            "`observed` の推奨値例:",
+            "- glows",
+            "- not_glows",
+            "- whiteout",
+            "- blackout",
+            "- mixed",
+            "",
+            "運用メモ:",
+            "- 1候補につき1行で追記し、同名候補は最新観測を下に追加",
+            "- notes には『どこが光ったか（右半分のみ等）』を短く記載",
+        ]
+    )
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines), encoding="utf-8")
@@ -985,6 +1108,10 @@ def main() -> None:
     report = outdir / "comparison.md"
     write_report(results, report, extended=args.extended)
 
+    if args.extended:
+        template_path = outdir / "human_observations_template.md"
+        write_human_observation_template(results, template_path)
+
     print(f"generated {len(results)} candidates -> {outdir}")
     for r in results:
         print(
@@ -995,6 +1122,8 @@ def main() -> None:
             f"relaxed={'YES' if r.match_relaxed_profile else 'NO'}"
         )
     print(f"report: {report}")
+    if args.extended:
+        print(f"human observation template: {outdir / 'human_observations_template.md'}")
 
 
 if __name__ == "__main__":

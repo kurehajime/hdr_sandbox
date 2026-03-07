@@ -1,7 +1,10 @@
 # 仮説更新メモ（2026-03-07）
 
 更新日: 2026-03-07  
-対象: `docs/reproduction-candidates.md` の人間検証結果を反映
+対象: `docs/human-observations.md` と `docs/reproduction-candidates.md` の観測を仮説に反映
+
+> 運用メモ: 人間観測の新規追記は `docs/human-observations.md` に集約し、
+> このファイルは仮説整理・解釈のみを更新する。
 
 ## 1. 事実（人間検証）
 

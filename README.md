@@ -57,6 +57,10 @@ python3 scripts/make_candidates.py \
 - `generated/candidate_probe_alpha_luma_matrix.png`
 - `generated/candidate_probe_isoeff_triplet.png`
 - `generated/candidate_probe_threshold_zoom_matrix.png`
+- `generated/candidate_probe_cicp_bt2020_pq.png`
+- `generated/candidate_probe_cicp_bt2020_srgb.png`
+- `generated/candidate_probe_cicp_bt709_pq.png`
+- `generated/candidate_probe_cicp_bt709_srgb.png`
 - `generated/candidate_probe_size_512.png`
 - `generated/candidate_probe_size_512_nontransparent.png`
 - `generated/candidate_probe_size_512_alpha255_bright_patch.png`
@@ -66,6 +70,16 @@ python3 scripts/make_candidates.py \
 - `generated/alpha_luma_matrix_spec.md`（2Dマトリクスの行列lane対応表）
 - `generated/isoeff_triplet_spec.md`（目標effective固定帯のlane対応表）
 - `generated/threshold_zoom_matrix_spec.md`（しきい値近傍マトリクスの行列lane対応表）
+- `generated/cicp_variant_spec.md`（cicp比較4条件の対応表）
+- `generated/human_observations_template.md`（人間観測の追記テンプレート）
 
-詳細は `docs/reproduction-candidates.md` と
+### 3) 人間観測ログの整合性チェック
+
+```bash
+python3 scripts/check_human_observations.py \
+  --observations docs/human-observations.md \
+  --generated-dir generated
+```
+
+詳細は `docs/reproduction-candidates.md` / `docs/human-observations.md` /
 `docs/hypothesis-update-2026-03-07.md` を参照。
