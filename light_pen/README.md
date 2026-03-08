@@ -37,7 +37,7 @@ npm run dev
 - UI: `src/App.tsx`
 - 参照ICC: `public/success_sample.png`
 - 生成時に背景画像へ `sRGB -> BT.2020/PQ` 変換を適用してから iCCP/cicp を付与
-- 線描画の反映は「白へ混色」ではなく、元RGBへ乗算ゲインを掛ける方式（色相維持）
+- 線描画の反映は「白へ混色」ではなく、PQの光量（nits）へ乗算ゲインを掛ける方式（色相維持）
 
 ## 注意
 

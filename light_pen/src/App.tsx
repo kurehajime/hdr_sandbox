@@ -38,6 +38,29 @@ function pqEncodeFromNits(nits: number): number {
   return Math.pow(num / den, m2)
 }
 
+function pqDecodeToNits(pqCode01: number): number {
+  const p = Math.max(0, Math.min(1, pqCode01))
+  const m1 = 0.1593017578125
+  const m2 = 78.84375
+  const c1 = 0.8359375
+  const c2 = 18.8515625
+  const c3 = 18.6875
+  const pm = Math.pow(p, 1 / m2)
+  const num = Math.max(0, pm - c1)
+  const den = c2 - c3 * pm
+  if (den <= 0) return PQ_MAX_NITS
+  const l = Math.pow(num / den, 1 / m1)
+  return Math.max(0, Math.min(PQ_MAX_NITS, l * PQ_MAX_NITS))
+}
+
+function pqCode16ToNits(code16: number): number {
+  return pqDecodeToNits(Math.max(0, Math.min(65535, code16)) / 65535)
+}
+
+function nitsToPqCode16(nits: number): number {
+  return Math.max(0, Math.min(65535, Math.round(pqEncodeFromNits(nits) * 65535)))
+}
+
 function convertRgba16SrgbToBt2020PqInPlace(rgba16be: Uint8Array) {
   for (let i = 0; i < rgba16be.length; i += 8) {
     const sr = readU16BE(rgba16be, i + 0) / 65535
@@ -363,12 +386,15 @@ function App() {
           const maskLuma = (drawImageData.data[p + 0] + drawImageData.data[p + 1] + drawImageData.data[p + 2]) / (3 * 255)
           const strokeWeight = Math.max(0, Math.min(1, maskAlpha * maskLuma))
           const desiredGain = 1 + strokeWeight * (STROKE_MAX_GAIN - 1)
-          const maxChannel = Math.max(1, currentR, currentG, currentB)
-          const headroomGain = 65535 / maxChannel
+          const rNits = pqCode16ToNits(currentR)
+          const gNits = pqCode16ToNits(currentG)
+          const bNits = pqCode16ToNits(currentB)
+          const maxNits = Math.max(1e-6, rNits, gNits, bNits)
+          const headroomGain = PQ_MAX_NITS / maxNits
           const gain = Math.max(1, Math.min(desiredGain, headroomGain))
-          currentR = Math.round(currentR * gain)
-          currentG = Math.round(currentG * gain)
-          currentB = Math.round(currentB * gain)
+          currentR = nitsToPqCode16(rNits * gain)
+          currentG = nitsToPqCode16(gNits * gain)
+          currentB = nitsToPqCode16(bNits * gain)
         }
 
         writeU16BE(rgba16be, s + 0, currentR)
