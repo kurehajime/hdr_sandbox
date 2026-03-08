@@ -1,5 +1,8 @@
 #!/usr/bin/env node
-import { runMinimalPipeline } from "./pipeline.mjs";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+
+import { generateMinimalCandidates } from "./pipeline.mjs";
 
 function usage() {
   console.log(`Usage: node src/jswasm-pipeline/cli.mjs [options]
@@ -66,9 +69,40 @@ function parseArgs(argv) {
   return args;
 }
 
+async function readOptionalFile(filePath) {
+  try {
+    return await fs.readFile(filePath);
+  } catch (err) {
+    if (err && err.code === "ENOENT") {
+      return null;
+    }
+    throw err;
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const res = await runMinimalPipeline(args);
+  const successRefPngBytes = await fs.readFile(args.successRef);
+  const iccFallbackBytes = await readOptionalFile(args.iccFallbackPath);
+
+  const res = await generateMinimalCandidates({
+    successRefPngBytes,
+    iccFallbackBytes,
+    width: args.width,
+    height: args.height,
+    alpha8Patch: args.alpha8Patch,
+    allowNoIccFallback: args.allowNoIccFallback,
+    forceJsFallback: args.forceJsFallback,
+  });
+
+  await fs.mkdir(args.outdir, { recursive: true });
+  const generatedPaths = [];
+  for (const [name, bytes] of Object.entries(res.files)) {
+    const outPath = path.join(args.outdir, name);
+    await fs.writeFile(outPath, bytes);
+    generatedPaths.push(outPath);
+  }
+
   console.log(`jswasm_pipeline_mode: ${res.wasmMode}`);
   console.log(`icc_source: ${res.iccSource}`);
   if (res.warning) {
@@ -77,7 +111,7 @@ async function main() {
   if (res.fallbackUsed) {
     console.log("fallback: embedded_iCCP_disabled");
   }
-  for (const p of res.generated) {
+  for (const p of generatedPaths) {
     console.log(`generated: ${p}`);
   }
 }

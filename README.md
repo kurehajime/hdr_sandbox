@@ -8,7 +8,8 @@ X向けHDR画像投稿の再現調査リポジトリ。
 - **現在は JavaScript/WASM 実装を優先。**
 - **技術制約:** 実装に使う技術はフロントエンドでも動かせるものに限定する。
   - Node専用API / Python依存 / サーバ依存を新規採用しない
-  - CLI実行は当面許容（開発導線としてのみ）
+  - `src/jswasm-pipeline/core.mjs` / `src/jswasm-pipeline/pipeline.mjs` は Node 依存なし（ブラウザ実行可能な純JS+WASM）
+  - CLI実行は当面許容（開発導線としてのみ。Node API使用はCLIラッパー層に限定）
 
 ## JavaScript/WASM 実装フェーズ（最短実行）
 
@@ -29,7 +30,7 @@ npm run gen:jswasm
   - `generated/jswasm/candidate_success_like.png`
   - `generated/jswasm/candidate_fail_no_iccp.png`
 - WASM `mulDiv255` が使えない場合は JS 計算へ自動フォールバック
-- `sample/success_sample.png` の iCCP 抽出に失敗した場合は `generated/jswasm/icc_bt2020_pq_from_success.icc` を使用
+- `sample/success_sample.png` の iCCP 抽出に失敗した場合は `generated/icc_bt2020_pq_from_success.icc` を使用
 - iCCP埋め込み失敗時は no-iCCP で継続生成（フォールバック）
 
 ### 2) 生成コマンド（失敗時フォールバック付き）
@@ -65,8 +66,8 @@ npm run impl:run
 ## 実装ファイル
 
 - `src/jswasm-pipeline/core.mjs`（PNG/IHDR/iCCP処理の共通コア）
-- `src/jswasm-pipeline/pipeline.mjs`（最小生成パイプライン）
-- `src/jswasm-pipeline/cli.mjs`（生成CLI）
+- `src/jswasm-pipeline/pipeline.mjs`（最小生成パイプライン本体。Node依存なし）
+- `src/jswasm-pipeline/cli.mjs`（生成CLI。Node I/Oラッパー）
 - `src/jswasm-pipeline/precheck.mjs`（投稿前チェックCLI）
 - `scripts/generate_candidates.mjs`（生成時フォールバック制御）
 

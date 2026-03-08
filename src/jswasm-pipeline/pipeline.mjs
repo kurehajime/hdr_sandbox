@@ -1,6 +1,3 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
-
 import {
   buildMinimalPatternRgba16,
   encodeRgba16Png,
@@ -25,11 +22,6 @@ function clampInt(v, min, max, label) {
 
 function jsMulDiv255(a, b) {
   return Math.floor(((a >>> 0) * (b >>> 0)) / 255) >>> 0;
-}
-
-export async function extractIccFromPng(pngPath) {
-  const bytes = await fs.readFile(pngPath);
-  return extractIccFromPngBytes(bytes, pngPath);
 }
 
 async function loadMulDiv255({ forceJsFallback = false } = {}) {
@@ -57,30 +49,23 @@ async function loadMulDiv255({ forceJsFallback = false } = {}) {
   }
 }
 
-async function resolveIccProfile({ successRef, iccFallbackPath = "", allowNoIccFallback = false }) {
+function resolveIccProfileFromBytes({
+  successRefPngBytes,
+  iccFallbackBytes = null,
+  allowNoIccFallback = false,
+}) {
   try {
     return {
-      profile: await extractIccFromPng(successRef),
-      source: `success-ref:${successRef}`,
+      profile: extractIccFromPngBytes(successRefPngBytes, "successRefPngBytes"),
+      source: "success-ref-bytes",
     };
   } catch (err) {
-    if (iccFallbackPath) {
-      try {
-        return {
-          profile: await fs.readFile(iccFallbackPath),
-          source: `icc-fallback:${iccFallbackPath}`,
-          warning: `extract_iCCP_failed:${err.message}`,
-        };
-      } catch (fallbackErr) {
-        if (allowNoIccFallback) {
-          return {
-            profile: null,
-            source: "none",
-            warning: `extract_iCCP_failed:${err.message};icc_fallback_failed:${fallbackErr.message}`,
-          };
-        }
-        throw new Error(`iCCP extraction failed (${err.message}) and icc fallback read failed (${fallbackErr.message})`);
-      }
+    if (iccFallbackBytes && iccFallbackBytes.length > 0) {
+      return {
+        profile: iccFallbackBytes,
+        source: "icc-fallback-bytes",
+        warning: `extract_iCCP_failed:${err.message}`,
+      };
     }
 
     if (allowNoIccFallback) {
@@ -95,56 +80,47 @@ async function resolveIccProfile({ successRef, iccFallbackPath = "", allowNoIccF
   }
 }
 
-export async function writeRgba16Png({ outPath, width, height, rgba16be, iccProfile }) {
-  const png = encodeRgba16Png({
-    width,
-    height,
-    rgba16be,
-    iccProfileBytes: iccProfile,
-  });
-
-  await fs.mkdir(path.dirname(outPath), { recursive: true });
-  await fs.writeFile(outPath, png);
-}
-
-export async function runMinimalPipeline({
-  successRef,
-  outdir,
+export async function generateMinimalCandidates({
+  successRefPngBytes,
+  iccFallbackBytes = null,
   width = 400,
   height = 400,
   alpha8Patch = 64,
-  iccFallbackPath = "generated/icc_bt2020_pq_from_success.icc",
   allowNoIccFallback = false,
   forceJsFallback = false,
 }) {
+  if (!(successRefPngBytes instanceof Uint8Array)) {
+    throw new Error("successRefPngBytes must be Uint8Array");
+  }
+
   const w = clampInt(width, 16, 4096, "width");
   const h = clampInt(height, 16, 4096, "height");
   const a8 = clampInt(alpha8Patch, 0, 255, "alpha8Patch");
 
-  const iccResolved = await resolveIccProfile({ successRef, iccFallbackPath, allowNoIccFallback });
+  const iccResolved = resolveIccProfileFromBytes({
+    successRefPngBytes,
+    iccFallbackBytes,
+    allowNoIccFallback,
+  });
   const op = await loadMulDiv255({ forceJsFallback });
   const pattern = buildMinimalPatternRgba16({ width: w, height: h, alpha8Patch: a8, mulDiv255: op.mulDiv255 });
 
-  const successPath = path.join(outdir, "candidate_success_like.png");
-  const noIccPath = path.join(outdir, "candidate_fail_no_iccp.png");
-
+  let successPngBytes;
   let fallbackUsed = false;
   try {
-    await writeRgba16Png({
-      outPath: successPath,
+    successPngBytes = encodeRgba16Png({
       width: pattern.width,
       height: pattern.height,
       rgba16be: pattern.rgba16be,
-      iccProfile: iccResolved.profile,
+      iccProfileBytes: iccResolved.profile,
     });
   } catch (err) {
     fallbackUsed = true;
-    await writeRgba16Png({
-      outPath: successPath,
+    successPngBytes = encodeRgba16Png({
       width: pattern.width,
       height: pattern.height,
       rgba16be: pattern.rgba16be,
-      iccProfile: null,
+      iccProfileBytes: null,
     });
     iccResolved.warning = iccResolved.warning
       ? `${iccResolved.warning};embed_iCCP_failed:${err.message}`
@@ -152,12 +128,11 @@ export async function runMinimalPipeline({
     iccResolved.source = "none";
   }
 
-  await writeRgba16Png({
-    outPath: noIccPath,
+  const failNoIccPngBytes = encodeRgba16Png({
     width: pattern.width,
     height: pattern.height,
     rgba16be: pattern.rgba16be,
-    iccProfile: null,
+    iccProfileBytes: null,
   });
 
   return {
@@ -165,6 +140,9 @@ export async function runMinimalPipeline({
     iccSource: iccResolved.source,
     warning: iccResolved.warning,
     fallbackUsed,
-    generated: [successPath, noIccPath],
+    files: {
+      "candidate_success_like.png": successPngBytes,
+      "candidate_fail_no_iccp.png": failNoIccPngBytes,
+    },
   };
 }
