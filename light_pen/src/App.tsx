@@ -6,6 +6,9 @@ import hologramUrl from './assets/kira.png'
 import { decodePngToRgba16, encodeRgba16Png, extractIccFromPngBytes, resizeRgba16Nearest } from './hdr/core.mjs'
 
 const OUTPUT_SIZE = 400
+const PQ_MAX_NITS = 10000
+const SDR_REFERENCE_NITS = 203
+const STROKE_MAX_GAIN = 6.0
 
 function readU16BE(bytes: Uint8Array, offset: number): number {
   return ((bytes[offset] << 8) | bytes[offset + 1]) >>> 0
@@ -17,12 +20,56 @@ function writeU16BE(bytes: Uint8Array, offset: number, value: number) {
   bytes[offset + 1] = v & 0xff
 }
 
+function srgbToLinear(v: number): number {
+  if (v <= 0.04045) return v / 12.92
+  return Math.pow((v + 0.055) / 1.055, 2.4)
+}
+
+function pqEncodeFromNits(nits: number): number {
+  const l = Math.max(0, Math.min(1, nits / PQ_MAX_NITS))
+  const m1 = 0.1593017578125
+  const m2 = 78.84375
+  const c1 = 0.8359375
+  const c2 = 18.8515625
+  const c3 = 18.6875
+  const lm1 = Math.pow(l, m1)
+  const num = c1 + c2 * lm1
+  const den = 1 + c3 * lm1
+  return Math.pow(num / den, m2)
+}
+
+function convertRgba16SrgbToBt2020PqInPlace(rgba16be: Uint8Array) {
+  for (let i = 0; i < rgba16be.length; i += 8) {
+    const sr = readU16BE(rgba16be, i + 0) / 65535
+    const sg = readU16BE(rgba16be, i + 2) / 65535
+    const sb = readU16BE(rgba16be, i + 4) / 65535
+
+    const lr = srgbToLinear(sr)
+    const lg = srgbToLinear(sg)
+    const lb = srgbToLinear(sb)
+
+    // sRGB (D65) -> BT.2020 linear
+    const r2020 = 0.6274040 * lr + 0.3292820 * lg + 0.0433136 * lb
+    const g2020 = 0.0690970 * lr + 0.9195400 * lg + 0.0113612 * lb
+    const b2020 = 0.0163916 * lr + 0.0880132 * lg + 0.8955950 * lb
+
+    const rPq = pqEncodeFromNits(Math.max(0, r2020) * SDR_REFERENCE_NITS)
+    const gPq = pqEncodeFromNits(Math.max(0, g2020) * SDR_REFERENCE_NITS)
+    const bPq = pqEncodeFromNits(Math.max(0, b2020) * SDR_REFERENCE_NITS)
+
+    writeU16BE(rgba16be, i + 0, Math.round(rPq * 65535))
+    writeU16BE(rgba16be, i + 2, Math.round(gPq * 65535))
+    writeU16BE(rgba16be, i + 4, Math.round(bPq * 65535))
+  }
+}
+
 function App() {
   const [imageName, setImageName] = useState<string>('base.png')
   const [sourcePngBytes, setSourcePngBytes] = useState<Uint8Array | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [brushSize, setBrushSize] = useState(18)
+  const [backgroundCap8, setBackgroundCap8] = useState(192)
   const [successUrl, setSuccessUrl] = useState<string | null>(null)
   const [failUrl, setFailUrl] = useState<string | null>(null)
 
@@ -288,25 +335,45 @@ function App() {
         dstWidth: OUTPUT_SIZE,
         dstHeight: OUTPUT_SIZE,
       })
+      convertRgba16SrgbToBt2020PqInPlace(rgba16be)
+      const bgCap16 = Math.max(0, Math.min(255, backgroundCap8)) * 257
 
       for (let i = 0; i < OUTPUT_SIZE * OUTPUT_SIZE; i += 1) {
         const p = i * 4
         const maskAlpha = drawImageData.data[p + 3] / 255
-        if (maskAlpha <= 0) continue
-
         const s = i * 8
-        const currentR = readU16BE(rgba16be, s + 0)
-        const currentG = readU16BE(rgba16be, s + 2)
-        const currentB = readU16BE(rgba16be, s + 4)
-        const maskLuma = (drawImageData.data[p + 0] + drawImageData.data[p + 1] + drawImageData.data[p + 2]) / (3 * 255)
-        const glow = Math.max(0.25, maskLuma)
-        const target = 65535 * glow
-        const mixedR = currentR * (1 - maskAlpha) + target * maskAlpha
-        const mixedG = currentG * (1 - maskAlpha) + target * maskAlpha
-        const mixedB = currentB * (1 - maskAlpha) + target * maskAlpha
-        writeU16BE(rgba16be, s + 0, Math.max(currentR, mixedR))
-        writeU16BE(rgba16be, s + 2, Math.max(currentG, mixedG))
-        writeU16BE(rgba16be, s + 4, Math.max(currentB, mixedB))
+        let currentR = readU16BE(rgba16be, s + 0)
+        let currentG = readU16BE(rgba16be, s + 2)
+        let currentB = readU16BE(rgba16be, s + 4)
+
+        // Reduce whiteout by capping background luminance where no stroke is drawn.
+        const bgWeight = 1 - maskAlpha
+        if (bgWeight > 0) {
+          const maxChannel = Math.max(currentR, currentG, currentB)
+          if (maxChannel > bgCap16 && maxChannel > 0) {
+            const scale = bgCap16 / maxChannel
+            const factor = 1 - bgWeight * (1 - scale)
+            currentR = Math.round(currentR * factor)
+            currentG = Math.round(currentG * factor)
+            currentB = Math.round(currentB * factor)
+          }
+        }
+
+        if (maskAlpha > 0) {
+          const maskLuma = (drawImageData.data[p + 0] + drawImageData.data[p + 1] + drawImageData.data[p + 2]) / (3 * 255)
+          const strokeWeight = Math.max(0, Math.min(1, maskAlpha * maskLuma))
+          const desiredGain = 1 + strokeWeight * (STROKE_MAX_GAIN - 1)
+          const maxChannel = Math.max(1, currentR, currentG, currentB)
+          const headroomGain = 65535 / maxChannel
+          const gain = Math.max(1, Math.min(desiredGain, headroomGain))
+          currentR = Math.round(currentR * gain)
+          currentG = Math.round(currentG * gain)
+          currentB = Math.round(currentB * gain)
+        }
+
+        writeU16BE(rgba16be, s + 0, currentR)
+        writeU16BE(rgba16be, s + 2, currentG)
+        writeU16BE(rgba16be, s + 4, currentB)
         writeU16BE(rgba16be, s + 6, 65535)
       }
 
@@ -331,7 +398,7 @@ function App() {
     } finally {
       setIsGenerating(false)
     }
-  }, [clearOutputs, fetchBytes, resolvePublicAssetUrl, sourcePngBytes])
+  }, [backgroundCap8, clearOutputs, fetchBytes, resolvePublicAssetUrl, sourcePngBytes])
 
   return (
     <div className="app">
@@ -375,6 +442,17 @@ function App() {
                 onChange={(event) => setBrushSize(Number(event.target.value))}
               />
               <strong>{brushSize}px</strong>
+            </label>
+            <label className="slider">
+              <span>背景最大輝度(8bit)</span>
+              <input
+                type="range"
+                min={96}
+                max={255}
+                value={backgroundCap8}
+                onChange={(event) => setBackgroundCap8(Number(event.target.value))}
+              />
+              <strong>{backgroundCap8}</strong>
             </label>
             <button type="button" onClick={handleApplyHologramFull} disabled={!hasImage || isGenerating}>
               画面全体にホログラム適用
