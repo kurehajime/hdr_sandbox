@@ -12,6 +12,12 @@ npm install
 npm run dev
 ```
 
+## GitHub Pages
+
+- デプロイworkflow: `.github/workflows/light-pen-pages.yml`
+- `main` へ push（`light_pen/**` 変更時）で自動デプロイ
+- 初回のみ、GitHub の Settings > Pages で Source を `GitHub Actions` に設定
+
 ## 使い方
 
 1. 背景PNGをアップロード（未指定時は `public/base.png`）
