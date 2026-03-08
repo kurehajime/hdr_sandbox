@@ -150,6 +150,114 @@ export function hasIccProfile(pngBytes, label = "png") {
   return chunks.some((c) => c.type === "iCCP");
 }
 
+function paethPredictor(a, b, c) {
+  const p = a + b - c;
+  const pa = Math.abs(p - a);
+  const pb = Math.abs(p - b);
+  const pc = Math.abs(p - c);
+  if (pa <= pb && pa <= pc) return a;
+  if (pb <= pc) return b;
+  return c;
+}
+
+function unfilterScanlines(raw, width, height, bpp) {
+  const rowBytes = width * bpp;
+  const out = new Uint8Array(height * rowBytes);
+  let src = 0;
+
+  for (let y = 0; y < height; y += 1) {
+    const filter = raw[src];
+    src += 1;
+    const rowStart = y * rowBytes;
+    for (let x = 0; x < rowBytes; x += 1) {
+      const val = raw[src];
+      src += 1;
+      const left = x >= bpp ? out[rowStart + x - bpp] : 0;
+      const up = y > 0 ? out[rowStart - rowBytes + x] : 0;
+      const upLeft = (y > 0 && x >= bpp) ? out[rowStart - rowBytes + x - bpp] : 0;
+      let outVal = 0;
+      if (filter === 0) outVal = val;
+      else if (filter === 1) outVal = (val + left) & 0xff;
+      else if (filter === 2) outVal = (val + up) & 0xff;
+      else if (filter === 3) outVal = (val + Math.floor((left + up) / 2)) & 0xff;
+      else if (filter === 4) outVal = (val + paethPredictor(left, up, upLeft)) & 0xff;
+      else throw new Error(`unsupported PNG filter: ${filter}`);
+      out[rowStart + x] = outVal;
+    }
+  }
+  return out;
+}
+
+export function decodePngToRgba16(pngBytes, label = "png") {
+  const ihdr = getIhdrSummary(pngBytes, label);
+  if (ihdr.bitDepth !== 16) {
+    throw new Error(`${label}: only bitDepth=16 is supported`);
+  }
+  if (ihdr.colorType !== 2 && ihdr.colorType !== 6) {
+    throw new Error(`${label}: only colorType=2/6 is supported`);
+  }
+  if (ihdr.interlaceMethod !== 0) {
+    throw new Error(`${label}: interlaced PNG is not supported`);
+  }
+
+  const chunks = parsePngChunks(pngBytes, label);
+  const idatParts = chunks.filter((c) => c.type === "IDAT").map((c) => c.data);
+  if (idatParts.length === 0) {
+    throw new Error(`${label}: IDAT missing`);
+  }
+  const idat = concatBytes(idatParts);
+  const raw = inflate(idat);
+
+  const srcChannels = ihdr.colorType === 6 ? 4 : 3;
+  const srcBpp = srcChannels * 2;
+  const expectedRaw = ihdr.height * (1 + ihdr.width * srcBpp);
+  if (raw.length !== expectedRaw) {
+    throw new Error(`${label}: unexpected decompressed size`);
+  }
+
+  const unfiltered = unfilterScanlines(raw, ihdr.width, ihdr.height, srcBpp);
+  const out = new Uint8Array(ihdr.width * ihdr.height * 8);
+
+  for (let i = 0, j = 0; i < ihdr.width * ihdr.height; i += 1, j += srcBpp) {
+    out[i * 8 + 0] = unfiltered[j + 0];
+    out[i * 8 + 1] = unfiltered[j + 1];
+    out[i * 8 + 2] = unfiltered[j + 2];
+    out[i * 8 + 3] = unfiltered[j + 3];
+    out[i * 8 + 4] = unfiltered[j + 4];
+    out[i * 8 + 5] = unfiltered[j + 5];
+    if (srcChannels === 4) {
+      out[i * 8 + 6] = unfiltered[j + 6];
+      out[i * 8 + 7] = unfiltered[j + 7];
+    } else {
+      out[i * 8 + 6] = 0xff;
+      out[i * 8 + 7] = 0xff;
+    }
+  }
+
+  return { width: ihdr.width, height: ihdr.height, rgba16be: out };
+}
+
+export function resizeRgba16Nearest({ srcWidth, srcHeight, srcRgba16be, dstWidth, dstHeight }) {
+  const out = new Uint8Array(dstWidth * dstHeight * 8);
+  for (let y = 0; y < dstHeight; y += 1) {
+    const sy = Math.min(srcHeight - 1, Math.floor((y * srcHeight) / dstHeight));
+    for (let x = 0; x < dstWidth; x += 1) {
+      const sx = Math.min(srcWidth - 1, Math.floor((x * srcWidth) / dstWidth));
+      const s = (sy * srcWidth + sx) * 8;
+      const d = (y * dstWidth + x) * 8;
+      out[d + 0] = srcRgba16be[s + 0];
+      out[d + 1] = srcRgba16be[s + 1];
+      out[d + 2] = srcRgba16be[s + 2];
+      out[d + 3] = srcRgba16be[s + 3];
+      out[d + 4] = srcRgba16be[s + 4];
+      out[d + 5] = srcRgba16be[s + 5];
+      out[d + 6] = srcRgba16be[s + 6];
+      out[d + 7] = srcRgba16be[s + 7];
+    }
+  }
+  return out;
+}
+
 function buildIccChunkData(iccProfileBytes) {
   const name = asciiBytes("icc");
   const nul = new Uint8Array([0x00]);
@@ -198,12 +306,12 @@ function writeU16BE(bytes, offset, value) {
   bytes[offset + 1] = value & 0xff;
 }
 
-export function buildMinimalPatternRgba16({ width, height, alpha8Patch, mulDiv255 }) {
+export function buildMinimalPatternRgba16({ width, height, alpha8Patch, mulDiv255, baseRgba16be = null }) {
   const w = clampInt(width, 16, 4096, "width");
   const h = clampInt(height, 16, 4096, "height");
   const a8 = clampInt(alpha8Patch, 0, 255, "alpha8Patch");
 
-  const px = new Uint8Array(w * h * 8);
+  const px = (baseRgba16be && baseRgba16be.length === w * h * 8) ? new Uint8Array(baseRgba16be) : new Uint8Array(w * h * 8);
   const bg = 1024;
   const alphaOpaque = 65535;
   const patchAlpha = mulDiv255(a8, 65535) >>> 0;
@@ -216,16 +324,25 @@ export function buildMinimalPatternRgba16({ width, height, alpha8Patch, mulDiv25
   const y0 = Math.floor(h / 2 - patchH / 2);
   const y1 = Math.min(h, y0 + patchH);
 
-  for (let y = 0; y < h; y += 1) {
-    for (let x = 0; x < w; x += 1) {
+  if (!(baseRgba16be && baseRgba16be.length === w * h * 8)) {
+    for (let y = 0; y < h; y += 1) {
+      for (let x = 0; x < w; x += 1) {
+        const i = (y * w + x) * 8;
+        writeU16BE(px, i + 0, bg);
+        writeU16BE(px, i + 2, bg);
+        writeU16BE(px, i + 4, bg);
+        writeU16BE(px, i + 6, alphaOpaque);
+      }
+    }
+  }
+
+  for (let y = y0; y < y1; y += 1) {
+    for (let x = x0; x < x1; x += 1) {
       const i = (y * w + x) * 8;
-      const inPatch = x >= x0 && x < x1 && y >= y0 && y < y1;
-      const rgb = inPatch ? 65535 : bg;
-      const a = inPatch ? patchAlpha : alphaOpaque;
-      writeU16BE(px, i + 0, rgb);
-      writeU16BE(px, i + 2, rgb);
-      writeU16BE(px, i + 4, rgb);
-      writeU16BE(px, i + 6, a);
+      writeU16BE(px, i + 0, 65535);
+      writeU16BE(px, i + 2, 65535);
+      writeU16BE(px, i + 4, 65535);
+      writeU16BE(px, i + 6, patchAlpha);
     }
   }
 

@@ -1,9 +1,11 @@
 import {
   buildMinimalPatternRgba16,
+  decodePngToRgba16,
   encodeRgba16Png,
   extractIccFromPngBytes,
   getIhdrSummary,
   hasIccProfile,
+  resizeRgba16Nearest,
   stripIccProfileFromPngBytes,
   upsertIccProfileToPngBytes,
 } from "./core.mjs";
@@ -166,7 +168,24 @@ export async function generateMinimalCandidates({
     allowNoIccFallback,
   });
   const op = await loadMulDiv255({ forceJsFallback });
-  const pattern = buildMinimalPatternRgba16({ width: w, height: h, alpha8Patch: a8, mulDiv255: op.mulDiv255 });
+  let baseRgba16be = null;
+  if (inputPngBytes instanceof Uint8Array) {
+    const decoded = decodePngToRgba16(inputPngBytes, "inputPngBytes");
+    baseRgba16be = resizeRgba16Nearest({
+      srcWidth: decoded.width,
+      srcHeight: decoded.height,
+      srcRgba16be: decoded.rgba16be,
+      dstWidth: w,
+      dstHeight: h,
+    });
+  }
+  const pattern = buildMinimalPatternRgba16({
+    width: w,
+    height: h,
+    alpha8Patch: a8,
+    mulDiv255: op.mulDiv255,
+    baseRgba16be,
+  });
 
   let successPngBytes;
   let fallbackUsed = false;

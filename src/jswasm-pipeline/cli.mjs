@@ -17,7 +17,7 @@ Options:
   --outdir <dir>            output directory (default: generated/jswasm)
   --width <n>               output width (default: 400)
   --height <n>              output height (default: 400)
-  --alpha8-patch <0-255>    patch alpha in 8bit space (default: 64)
+  --alpha8-patch <0-255>    patch alpha in 8bit space (default: 255)
   --force-js-fallback       skip wasm and force JS fallback path
   -h, --help                show this help
 `);
@@ -33,7 +33,7 @@ function parseArgs(argv) {
     outdir: "generated/jswasm",
     width: 400,
     height: 400,
-    alpha8Patch: 64,
+    alpha8Patch: 255,
     forceJsFallback: false,
   };
 
