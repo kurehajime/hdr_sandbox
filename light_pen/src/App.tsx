@@ -76,6 +76,11 @@ function App() {
     return new Uint8Array(await res.arrayBuffer())
   }, [])
 
+  const resolvePublicAssetUrl = useCallback((fileName: string) => {
+    const base = import.meta.env.BASE_URL ?? '/'
+    return `${base}${fileName}`
+  }, [])
+
   const handleFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0]
@@ -99,8 +104,8 @@ function App() {
     clearOutputs()
     try {
       const [successRefPngBytes, defaultInputPngBytes] = await Promise.all([
-        fetchBytes('/success_sample.png'),
-        fetchBytes('/base.png'),
+        fetchBytes(resolvePublicAssetUrl('success_sample.png')),
+        fetchBytes(resolvePublicAssetUrl('base.png')),
       ])
       const sourcePngBytes = inputBytes ?? defaultInputPngBytes
       const result = await generateMinimalCandidates({
@@ -122,7 +127,7 @@ function App() {
     } finally {
       setIsGenerating(false)
     }
-  }, [alpha8Patch, clearOutputs, fetchBytes, inputBytes, mode])
+  }, [alpha8Patch, clearOutputs, fetchBytes, inputBytes, mode, resolvePublicAssetUrl])
 
   useEffect(() => () => {
     revokeObjectUrl(successUrl)
