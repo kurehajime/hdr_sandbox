@@ -4,8 +4,6 @@ import './App.css'
 import hologramUrl from './assets/kira.png'
 // @ts-expect-error local .mjs module without TS declarations
 import { decodePngToRgba16, encodeRgba16Png, extractIccFromPngBytes, resizeRgba16Nearest } from './hdr/core.mjs'
-
-const OUTPUT_SIZE = 400
 const PQ_MAX_NITS = 10000
 const SDR_REFERENCE_NITS = 203
 const STROKE_MAX_GAIN = 6.0
@@ -89,6 +87,7 @@ function convertRgba16SrgbToBt2020PqInPlace(rgba16be: Uint8Array) {
 function App() {
   const [imageName, setImageName] = useState<string>('base.png')
   const [sourcePngBytes, setSourcePngBytes] = useState<Uint8Array | null>(null)
+  const [imageSize, setImageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
   const [error, setError] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [brushSize, setBrushSize] = useState(18)
@@ -150,16 +149,19 @@ function App() {
     const baseCanvas = baseCanvasRef.current
     const drawCanvas = drawCanvasRef.current
     if (!baseCanvas || !drawCanvas) return
-    baseCanvas.width = OUTPUT_SIZE
-    baseCanvas.height = OUTPUT_SIZE
-    drawCanvas.width = OUTPUT_SIZE
-    drawCanvas.height = OUTPUT_SIZE
+    const width = image.naturalWidth
+    const height = image.naturalHeight
+    baseCanvas.width = width
+    baseCanvas.height = height
+    drawCanvas.width = width
+    drawCanvas.height = height
+    setImageSize({ width, height })
     const baseContext = baseCanvas.getContext('2d')
     const drawContext = drawCanvas.getContext('2d')
     if (!baseContext || !drawContext) throw new Error('キャンバス初期化に失敗しました。')
-    baseContext.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE)
-    baseContext.drawImage(image, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE)
-    drawContext.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE)
+    baseContext.clearRect(0, 0, width, height)
+    baseContext.drawImage(image, 0, 0, width, height)
+    drawContext.clearRect(0, 0, width, height)
     clearOutputs()
   }, [bytesToImage, clearOutputs])
 
@@ -350,18 +352,20 @@ function App() {
         Promise.resolve(drawContext.getImageData(0, 0, drawCanvas.width, drawCanvas.height)),
       ])
 
+      const outW = drawCanvas.width
+      const outH = drawCanvas.height
       const decoded = decodePngToRgba16(sourcePngBytes, 'inputPngBytes')
       const rgba16be = resizeRgba16Nearest({
         srcWidth: decoded.width,
         srcHeight: decoded.height,
         srcRgba16be: decoded.rgba16be,
-        dstWidth: OUTPUT_SIZE,
-        dstHeight: OUTPUT_SIZE,
+        dstWidth: outW,
+        dstHeight: outH,
       })
       convertRgba16SrgbToBt2020PqInPlace(rgba16be)
       const bgCap16 = Math.max(0, Math.min(255, backgroundCap8)) * 257
 
-      for (let i = 0; i < OUTPUT_SIZE * OUTPUT_SIZE; i += 1) {
+      for (let i = 0; i < outW * outH; i += 1) {
         const p = i * 4
         const maskAlpha = drawImageData.data[p + 3] / 255
         const s = i * 8
@@ -405,14 +409,14 @@ function App() {
 
       const iccProfile = extractIccFromPngBytes(successRefPngBytes, 'successRefPngBytes')
       const successBytes = encodeRgba16Png({
-        width: OUTPUT_SIZE,
-        height: OUTPUT_SIZE,
+        width: outW,
+        height: outH,
         rgba16be,
         iccProfileBytes: iccProfile,
       })
       const failBytes = encodeRgba16Png({
-        width: OUTPUT_SIZE,
-        height: OUTPUT_SIZE,
+        width: outW,
+        height: outH,
         rgba16be,
         iccProfileBytes: null,
       })
@@ -452,7 +456,7 @@ function App() {
               onPointerLeave={handlePointerUp}
             />
           </div>
-          <p className="hint">入力: {imageName}</p>
+          <p className="hint">入力: {imageName} ({imageSize.width}x{imageSize.height})</p>
         </div>
 
         <aside className="workspace__controls">
