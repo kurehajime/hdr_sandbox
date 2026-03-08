@@ -35,6 +35,10 @@
 | probe_isoeff_triplet | `candidate_probe_isoeff_triplet.png` | todo | TODO | 未投稿: 等effective 3帯の均一性比較 |
 | probe_threshold_zoom_matrix | `candidate_probe_threshold_zoom_matrix.png` | not_glows | https://x.com/kurehajime/status/2030297528013554096 | 白より白く見える領域はなかった |
 | probe_size_512_alpha255_bright_patch | `candidate_probe_size_512_alpha255_bright_patch.png` | todo | TODO | 未投稿: 512黒化の輝度不足切り分け |
+| probe_size_512_alpha255_bright_patch | `candidate_probe_size_512_alpha255_bright_patch.png` | todo | TODO | 未投稿: 512黒化の輝度不足切り分け |
+| jswasm/candidate_fail_no_iccp | `jswasm/candidate_fail_no_iccp.png` | todo | https://x.com/kurehajime/status/2030441276865474741 | 光ってない |
+| jswasm/candidate_success_like | `jswasm/candidate_success_like.png` | todo | https://x.com/kurehajime/status/2030440896056221985 | 白より白く光った |
+
 
 ## observed 値の凡例
 
