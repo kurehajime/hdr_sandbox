@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 
 function parseArgs(argv) {
   const args = {
+    input: "sample/success_sample.png",
     successRef: "sample/success_sample.png",
     outdir: "generated/jswasm",
     forceFallback: process.env.HDR_FORCE_JS_FALLBACK === "1",
@@ -14,6 +15,9 @@ function parseArgs(argv) {
     const v = argv[i + 1];
     if (a === "--success-ref" && v) {
       args.successRef = v;
+      i += 1;
+    } else if (a === "--input" && v) {
+      args.input = v;
       i += 1;
     } else if (a === "--outdir" && v) {
       args.outdir = v;
@@ -42,6 +46,8 @@ if (args.forceFallback) {
   console.error("[fallback] --force-fallback/HDR_FORCE_JS_FALLBACK=1 is set. run JS fallback path directly.");
   const forced = runNode([
     "src/jswasm-pipeline/cli.mjs",
+    "--input",
+    args.input,
     "--success-ref",
     args.successRef,
     "--outdir",
@@ -55,6 +61,8 @@ if (args.forceFallback) {
 
 const primary = runNode([
   "src/jswasm-pipeline/cli.mjs",
+  "--input",
+  args.input,
   "--success-ref",
   args.successRef,
   "--outdir",

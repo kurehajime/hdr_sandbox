@@ -2,6 +2,10 @@ import {
   buildMinimalPatternRgba16,
   encodeRgba16Png,
   extractIccFromPngBytes,
+  getIhdrSummary,
+  hasIccProfile,
+  stripIccProfileFromPngBytes,
+  upsertIccProfileToPngBytes,
 } from "./core.mjs";
 
 const MUL_DIV_255_WASM_BYTES = new Uint8Array([
@@ -81,16 +85,75 @@ function resolveIccProfileFromBytes({
 }
 
 export async function generateMinimalCandidates({
+  inputPngBytes = null,
   successRefPngBytes,
   iccFallbackBytes = null,
   width = 400,
   height = 400,
   alpha8Patch = 64,
+  mode = "pass-through",
   allowNoIccFallback = false,
   forceJsFallback = false,
 }) {
   if (!(successRefPngBytes instanceof Uint8Array)) {
     throw new Error("successRefPngBytes must be Uint8Array");
+  }
+  if (!(typeof mode === "string")) {
+    throw new Error("mode must be string");
+  }
+
+  if (mode === "pass-through") {
+    if (!(inputPngBytes instanceof Uint8Array)) {
+      throw new Error("inputPngBytes must be Uint8Array in pass-through mode");
+    }
+
+    const ihdr = getIhdrSummary(inputPngBytes, "inputPngBytes");
+    if (ihdr.bitDepth !== 16 || ihdr.colorType !== 6) {
+      throw new Error(`pass-through mode requires RGBA16 PNG input (bitDepth=16,colorType=6), got bitDepth=${ihdr.bitDepth},colorType=${ihdr.colorType}`);
+    }
+
+    const iccResolved = resolveIccProfileFromBytes({
+      successRefPngBytes,
+      iccFallbackBytes,
+      allowNoIccFallback,
+    });
+
+    let successPngBytes = inputPngBytes;
+    let fallbackUsed = false;
+    if (!hasIccProfile(inputPngBytes, "inputPngBytes")) {
+      if (iccResolved.profile) {
+        try {
+          successPngBytes = upsertIccProfileToPngBytes(inputPngBytes, iccResolved.profile, "inputPngBytes");
+        } catch (err) {
+          if (!allowNoIccFallback) throw err;
+          fallbackUsed = true;
+          iccResolved.warning = iccResolved.warning
+            ? `${iccResolved.warning};embed_iCCP_failed:${err.message}`
+            : `embed_iCCP_failed:${err.message}`;
+          iccResolved.source = "none";
+        }
+      } else if (!allowNoIccFallback) {
+        throw new Error("ICC profile unavailable");
+      }
+    } else {
+      iccResolved.source = "input-png";
+    }
+
+    const failNoIccPngBytes = stripIccProfileFromPngBytes(successPngBytes, "successPngBytes");
+    return {
+      wasmMode: "pass-through",
+      iccSource: iccResolved.source,
+      warning: iccResolved.warning,
+      fallbackUsed,
+      files: {
+        "candidate_success_like.png": successPngBytes,
+        "candidate_fail_no_iccp.png": failNoIccPngBytes,
+      },
+    };
+  }
+
+  if (mode !== "minimal-pattern") {
+    throw new Error(`unknown mode: ${mode}`);
   }
 
   const w = clampInt(width, 16, 4096, "width");

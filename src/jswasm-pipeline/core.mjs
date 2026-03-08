@@ -150,6 +150,41 @@ export function hasIccProfile(pngBytes, label = "png") {
   return chunks.some((c) => c.type === "iCCP");
 }
 
+function buildIccChunkData(iccProfileBytes) {
+  const name = asciiBytes("icc");
+  const nul = new Uint8Array([0x00]);
+  const method = new Uint8Array([0x00]);
+  const compressed = deflate(iccProfileBytes, { level: 9 });
+  return concatBytes([name, nul, method, compressed]);
+}
+
+function rebuildPngFromChunks(chunks) {
+  const outChunks = chunks.map((c) => chunk(c.type, c.data));
+  return concatBytes([PNG_SIG, ...outChunks]);
+}
+
+export function stripIccProfileFromPngBytes(pngBytes, label = "png") {
+  const chunks = parsePngChunks(pngBytes, label);
+  const filtered = chunks.filter((c) => c.type !== "iCCP");
+  return rebuildPngFromChunks(filtered);
+}
+
+export function upsertIccProfileToPngBytes(pngBytes, iccProfileBytes, label = "png") {
+  if (!(iccProfileBytes instanceof Uint8Array) || iccProfileBytes.length === 0) {
+    throw new Error("iccProfileBytes must be non-empty Uint8Array");
+  }
+  const chunks = parsePngChunks(pngBytes, label);
+  const withoutIcc = chunks.filter((c) => c.type !== "iCCP");
+  const ihdrIdx = withoutIcc.findIndex((c) => c.type === "IHDR");
+  if (ihdrIdx < 0) {
+    throw new Error(`${label}: IHDR missing`);
+  }
+
+  const iccpChunk = { type: "iCCP", data: buildIccChunkData(iccProfileBytes) };
+  const out = withoutIcc.slice(0, ihdrIdx + 1).concat([iccpChunk], withoutIcc.slice(ihdrIdx + 1));
+  return rebuildPngFromChunks(out);
+}
+
 function clampInt(v, min, max, label) {
   const n = Number(v);
   if (!Number.isFinite(n)) {
@@ -225,11 +260,7 @@ export function encodeRgba16Png({ width, height, rgba16be, iccProfileBytes = nul
   const chunks = [chunk("IHDR", ihdr)];
 
   if (iccProfileBytes && iccProfileBytes.length > 0) {
-    const name = asciiBytes("icc");
-    const nul = new Uint8Array([0x00]);
-    const method = new Uint8Array([0x00]);
-    const compressed = deflate(iccProfileBytes, { level: 9 });
-    chunks.push(chunk("iCCP", concatBytes([name, nul, method, compressed])));
+    chunks.push(chunk("iCCP", buildIccChunkData(iccProfileBytes)));
   }
 
   chunks.push(chunk("IDAT", deflate(rows, { level: 9 })));

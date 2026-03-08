@@ -8,9 +8,11 @@ function usage() {
   console.log(`Usage: node src/jswasm-pipeline/cli.mjs [options]
 
 Options:
+  --input <path>            source PNG for candidate_success_like (default: sample/success_sample.png)
   --success-ref <path>      source PNG with iCCP (default: sample/success_sample.png)
   --icc-fallback <path>     fallback ICC file when --success-ref has no iCCP
                             (default: generated/icc_bt2020_pq_from_success.icc)
+  --mode <name>             pass-through | minimal-pattern (default: pass-through)
   --allow-no-icc-fallback   allow generation even if ICC is unavailable
   --outdir <dir>            output directory (default: generated/jswasm)
   --width <n>               output width (default: 400)
@@ -23,8 +25,10 @@ Options:
 
 function parseArgs(argv) {
   const args = {
+    input: "sample/success_sample.png",
     successRef: "sample/success_sample.png",
     iccFallbackPath: "generated/icc_bt2020_pq_from_success.icc",
+    mode: "pass-through",
     allowNoIccFallback: false,
     outdir: "generated/jswasm",
     width: 400,
@@ -42,8 +46,14 @@ function parseArgs(argv) {
     } else if (a === "--success-ref" && v) {
       args.successRef = v;
       i += 1;
+    } else if (a === "--input" && v) {
+      args.input = v;
+      i += 1;
     } else if (a === "--icc-fallback" && v) {
       args.iccFallbackPath = v;
+      i += 1;
+    } else if (a === "--mode" && v) {
+      args.mode = v;
       i += 1;
     } else if (a === "--allow-no-icc-fallback") {
       args.allowNoIccFallback = true;
@@ -82,12 +92,15 @@ async function readOptionalFile(filePath) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  const inputPngBytes = await fs.readFile(args.input);
   const successRefPngBytes = await fs.readFile(args.successRef);
   const iccFallbackBytes = await readOptionalFile(args.iccFallbackPath);
 
   const res = await generateMinimalCandidates({
+    inputPngBytes,
     successRefPngBytes,
     iccFallbackBytes,
+    mode: args.mode,
     width: args.width,
     height: args.height,
     alpha8Patch: args.alpha8Patch,
