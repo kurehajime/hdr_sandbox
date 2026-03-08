@@ -92,7 +92,7 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [brushSize, setBrushSize] = useState(18)
-  const [backgroundCap8, setBackgroundCap8] = useState(192)
+  const [backgroundCap8, setBackgroundCap8] = useState(255)
   const [successUrl, setSuccessUrl] = useState<string | null>(null)
   const [failUrl, setFailUrl] = useState<string | null>(null)
 
