@@ -25,7 +25,7 @@ npm run gen:jswasm
 
 - 生成物は `generated/jswasm/` 配下に出力（既存 `generated/` 直下を上書きしない）。
 - 既定 `--mode pass-through` では `--input` PNG をそのまま `candidate_success_like.png` に使う（初期値は `sample/success_sample.png`）。
-- 合成ミニマルパターンを使う場合は `npm run gen:jswasm -- --mode minimal-pattern`。
+- 合成ミニマルパターンを使う場合は `npm run gen:jswasm -- --mode minimal-pattern`（右端に接触する高輝度長方形パッチを生成）。
 - `sample/success_sample.png` から iCCP を読めない場合は `generated/icc_bt2020_pq_from_success.icc` にフォールバック。
 - WASMの代わりにJS計算を強制する場合は `npm run gen:jswasm -- --force-js-fallback`。
 - iCCP 埋め込み失敗時は no-iCCP で継続生成する。

@@ -30,7 +30,7 @@ npm run gen:jswasm
   - `generated/jswasm/candidate_success_like.png`
   - `generated/jswasm/candidate_fail_no_iccp.png`
 - 既定モードは `pass-through`（入力PNGをそのまま success_like に採用）で、`sample/success_sample.png` と同一画素で比較できる
-- 従来の合成パターンは `--mode minimal-pattern` で利用可能
+- 従来の合成パターンは `--mode minimal-pattern` で利用可能（右端に接触する高輝度長方形パッチ）
 - WASM `mulDiv255` が使えない場合は JS 計算へ自動フォールバック
 - `sample/success_sample.png` の iCCP 抽出に失敗した場合は `generated/icc_bt2020_pq_from_success.icc` を使用
 - iCCP埋め込み失敗時は no-iCCP で継続生成（フォールバック）

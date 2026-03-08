@@ -141,3 +141,6 @@ vite.config.ts.timestamp-*
 # Python cache
 __pycache__/
 *.py[cod]
+
+# macOS Finder metadata
+.DS_Store

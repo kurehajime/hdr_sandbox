@@ -208,12 +208,13 @@ export function buildMinimalPatternRgba16({ width, height, alpha8Patch, mulDiv25
   const alphaOpaque = 65535;
   const patchAlpha = mulDiv255(a8, 65535) >>> 0;
 
-  const patchW = Math.max(24, Math.floor(w / 4));
-  const patchH = Math.max(24, Math.floor(h / 4));
-  const x0 = Math.floor(w / 2 - patchW / 2);
+  // Use an edge-touching bright rectangle to make subtle HDR differences easier to notice.
+  const patchW = Math.max(48, Math.floor(w / 3));
+  const patchH = Math.max(48, Math.floor(h / 3));
+  const x1 = w;
+  const x0 = Math.max(0, x1 - patchW);
   const y0 = Math.floor(h / 2 - patchH / 2);
-  const x1 = x0 + patchW;
-  const y1 = y0 + patchH;
+  const y1 = Math.min(h, y0 + patchH);
 
   for (let y = 0; y < h; y += 1) {
     for (let x = 0; x < w; x += 1) {
