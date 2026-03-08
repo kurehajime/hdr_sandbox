@@ -20,13 +20,13 @@ npm run dev
 
 ## 使い方
 
-1. 背景PNGをアップロード（未指定時は `public/base.png`）
+1. 背景画像をアップロード（未指定時は `public/base.png`）
    - PNG/JPEG/WebP など `image/*` を受付（非PNGはブラウザ内でPNGへ正規化）
-2. モードを選択
-   - `minimal-pattern`（背景 + 白長方形パッチ重畳）
-   - `pass-through`（入力PNGをそのまま success_like に採用）
-3. `HDR候補を生成` を押す
-4. 出力2枚を保存
+2. キャンバス上にペンで線を描く（描画部分を高輝度化）
+3. 必要に応じて `画面全体にホログラム適用` ボタンを押す
+   - 線描画だけではホログラムは適用されない
+4. `HDR候補を生成` を押す
+5. 出力2枚を保存
    - `candidate_success_like.png`
    - `candidate_fail_no_iccp.png`
 
@@ -38,5 +38,5 @@ npm run dev
 
 ## 注意
 
-- `minimal-pattern` は `--alpha8-patch` 相当の値をUIで調整可能（既定255）。
+- `success_like` は iCCP/cicp 付き、`fail_no_iccp` は iCCP なしの対照画像です。
 - X投稿時の見え方判定は実機依存のため、最終確認は実投稿で行ってください。
