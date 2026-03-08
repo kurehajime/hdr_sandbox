@@ -38,7 +38,7 @@
 | probe_size_512_alpha255_bright_patch | `candidate_probe_size_512_alpha255_bright_patch.png` | todo | TODO | 未投稿: 512黒化の輝度不足切り分け |
 | jswasm/candidate_fail_no_iccp | `jswasm/candidate_fail_no_iccp.png` | todo | https://x.com/kurehajime/status/2030441276865474741 | 光ってない |
 | jswasm/candidate_success_like | `jswasm/candidate_success_like.png` | todo | https://x.com/kurehajime/status/2030440896056221985 | 白より白く光った |
-
+| jswasm_minimal_base_default/candidate_success_like | `jswasm_minimal_base_default/candidate_success_like.png` | todo | https://x.com/kurehajime/status/2030448502464213019 | 白より白く光った |
 
 ## observed 値の凡例
 
