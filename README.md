@@ -36,6 +36,17 @@ npm run gen:jswasm
 - `sample/success_sample.png` の iCCP 抽出に失敗した場合は `generated/icc_bt2020_pq_from_success.icc` を使用
 - iCCP埋め込み失敗時は no-iCCP で継続生成（フォールバック）
 
+### 1b) 現時点の推奨コマンド（実機成功条件）
+
+```bash
+npm run gen:jswasm -- --mode minimal-pattern --input sample/base.png --outdir generated/jswasm_minimal_base_default
+```
+
+- 出力:
+  - `generated/jswasm_minimal_base_default/candidate_success_like.png`
+  - `generated/jswasm_minimal_base_default/candidate_fail_no_iccp.png`
+- `minimal-pattern` は背景 `sample/base.png` に白長方形（alpha既定255）を重畳した生成条件
+
 ### 2) 生成コマンド（失敗時フォールバック付き）
 
 ```bash
