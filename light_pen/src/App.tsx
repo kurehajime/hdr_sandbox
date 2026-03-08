@@ -7,6 +7,7 @@ import { decodePngToRgba16, encodeRgba16Png, extractIccFromPngBytes, resizeRgba1
 const PQ_MAX_NITS = 10000
 const SDR_REFERENCE_NITS = 203
 const STROKE_MAX_GAIN = 6.0
+const MAX_OUTPUT_LONG_SIDE = 500
 
 function readU16BE(bytes: Uint8Array, offset: number): number {
   return ((bytes[offset] << 8) | bytes[offset + 1]) >>> 0
@@ -57,6 +58,16 @@ function pqCode16ToNits(code16: number): number {
 
 function nitsToPqCode16(nits: number): number {
   return Math.max(0, Math.min(65535, Math.round(pqEncodeFromNits(nits) * 65535)))
+}
+
+function computeAspectFitSize(width: number, height: number, maxLongSide: number) {
+  const longSide = Math.max(width, height)
+  if (longSide <= maxLongSide) return { width, height }
+  const scale = maxLongSide / longSide
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  }
 }
 
 function convertRgba16SrgbToBt2020PqInPlace(rgba16be: Uint8Array) {
@@ -347,13 +358,24 @@ function App() {
     setIsGenerating(true)
     clearOutputs()
     try {
-      const [successRefPngBytes, drawImageData] = await Promise.all([
-        fetchBytes(resolvePublicAssetUrl('success_sample.png')),
-        Promise.resolve(drawContext.getImageData(0, 0, drawCanvas.width, drawCanvas.height)),
-      ])
-
-      const outW = drawCanvas.width
-      const outH = drawCanvas.height
+      const successRefPngBytes = await fetchBytes(resolvePublicAssetUrl('success_sample.png'))
+      const fitted = computeAspectFitSize(drawCanvas.width, drawCanvas.height, MAX_OUTPUT_LONG_SIDE)
+      const outW = fitted.width
+      const outH = fitted.height
+      const drawImageData = (() => {
+        if (drawCanvas.width === outW && drawCanvas.height === outH) {
+          return drawContext.getImageData(0, 0, outW, outH)
+        }
+        const maskCanvas = document.createElement('canvas')
+        maskCanvas.width = outW
+        maskCanvas.height = outH
+        const maskContext = maskCanvas.getContext('2d')
+        if (!maskContext) {
+          throw new Error('マスク用キャンバスの初期化に失敗しました。')
+        }
+        maskContext.drawImage(drawCanvas, 0, 0, outW, outH)
+        return maskContext.getImageData(0, 0, outW, outH)
+      })()
       const decoded = decodePngToRgba16(sourcePngBytes, 'inputPngBytes')
       const rgba16be = resizeRgba16Nearest({
         srcWidth: decoded.width,
