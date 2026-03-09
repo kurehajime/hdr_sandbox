@@ -7,7 +7,7 @@ import { decodePngToRgba16, encodeRgba16Png, extractIccFromPngBytes, resizeRgba1
 const PQ_MAX_NITS = 10000
 const SDR_REFERENCE_NITS = 203
 const STROKE_MAX_GAIN = 6.0
-const MAX_OUTPUT_LONG_SIDE = 400
+const MAX_OUTPUT_LONG_SIDE = 800
 
 function readU16BE(bytes: Uint8Array, offset: number): number {
   return ((bytes[offset] << 8) | bytes[offset + 1]) >>> 0
