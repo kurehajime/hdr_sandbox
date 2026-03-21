@@ -14,6 +14,8 @@ import {
 } from '@imagemagick/magick-wasm'
 import './App.css'
 import hologramUrl from './assets/kira.png'
+// @ts-expect-error local .mjs module without TS declarations
+import { extractIccFromPngBytes } from './hdr/core.mjs'
 
 const MAX_OUTPUT_LONG_SIDE = 800
 const DEFAULT_SOURCE_MIME = 'image/png'
@@ -115,6 +117,8 @@ function prepareImageForHdrOutput(
     if (sourceProfile) {
       image.transformColorSpace(sourceProfile, targetProfile)
     } else {
+      // Uploaded images often have no embedded ICC. Treat them as sRGB before HDR conversion.
+      image.colorSpace = ColorSpace.sRGB
       image.transformColorSpace(targetProfile)
     }
   } catch {
@@ -135,7 +139,7 @@ function applyLinearExposureBoost(
 }
 
 function writePngBytes(image: IMagickImage) {
-  return image.write(MagickFormat.Png, (data) => Uint8Array.from(data))
+  return image.write(MagickFormat.Png64, (data) => Uint8Array.from(data))
 }
 
 function App() {
@@ -374,9 +378,9 @@ function App() {
     clearOutputs()
 
     try {
-      const [wasmBytes, targetIccBytes] = await Promise.all([
+      const [wasmBytes, successRefPngBytes] = await Promise.all([
         fetchBytes(resolvePublicAssetUrl('magick.wasm')),
-        fetchBytes(resolvePublicAssetUrl('bt2020-pq.icc')),
+        fetchBytes(resolvePublicAssetUrl('success_sample.png')),
       ])
       await ensureImageMagickReady(wasmBytes)
 
@@ -384,7 +388,7 @@ function App() {
       const outWidth = fitted.width
       const outHeight = fitted.height
       const maskPngBytes = await canvasToPngBytes(normalizeMaskCanvas(drawCanvas, outWidth, outHeight))
-      const targetProfile = new ColorProfile(targetIccBytes)
+      const targetProfile = new ColorProfile(extractIccFromPngBytes(successRefPngBytes, 'successRefPngBytes'))
 
       const { successBytes, failBytes } = ImageMagick.read(sourceBytes, (sourceImage) => {
         return sourceImage.clone((baseImage) => {
@@ -434,7 +438,7 @@ function App() {
       <header className="app__header">
         <div>
           <h1>Light Pen HDR PNG 2</h1>
-          <p className="app__subtitle">magick-wasm で 16-bit PNG と iCCP を組み立てる実験版です。</p>
+          <p className="app__subtitle">magick-wasm で X 投稿向け HDR PNG を組み立てる実験版です。</p>
         </div>
         <label className="file">
           <input type="file" accept="image/*" onChange={handleFileChange} />
@@ -493,21 +497,21 @@ function App() {
           </div>
 
           <div className="panel">
-            <h2>magick-wasm 出力</h2>
+            <h2>X 向け HDR PNG</h2>
             <p className="panel__hint">
-              ベース画像を HDR ICC 付き 16-bit PNG に変換し、描画マスク部分だけリニア倍率で強調します。
+              参照成功例の ICC を使って 16-bit PNG を組み立て、描画マスク部分だけリニア倍率で強調します。
             </p>
             <button type="button" onClick={handleGenerate} disabled={!hasImage || isGenerating}>
               {isGenerating ? '生成中…' : 'HDR候補を生成'}
             </button>
             {successUrl && <img className="preview" src={successUrl} alt="candidate success preview" />}
             {successUrl && (
-              <a className="download" href={successUrl} download="candidate_magick_success_like.png">
+              <a className="download" href={successUrl} download="candidate_success_like.png">
                 success_like を保存
               </a>
             )}
             {failUrl && (
-              <a className="download" href={failUrl} download="candidate_magick_fail_no_iccp.png">
+              <a className="download" href={failUrl} download="candidate_fail_no_iccp.png">
                 fail_no_iccp を保存
               </a>
             )}

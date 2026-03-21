@@ -1,6 +1,6 @@
 # light_pen2
 
-`magick-wasm` を使って、ブラウザ内で `RGBA16 + iCCP` の PNG を組み立てる実験版です。
+`magick-wasm` を使って、ブラウザ内で X 投稿向け `RGBA16 + iCCP` の PNG を組み立てる実験版です。
 
 既存の [`light_pen`](../light_pen) が自前 PNG エンコーダ中心なのに対し、こちらは
 ImageMagick WASM で 16-bit PNG 書き出しと ICC 埋め込みまで行います。
@@ -25,10 +25,10 @@ npm run dev
 
 ## 出力
 
-- `candidate_magick_success_like.png`
+- `candidate_success_like.png`
   - 16-bit PNG
   - `iCCP` あり
-- `candidate_magick_fail_no_iccp.png`
+- `candidate_fail_no_iccp.png`
   - 16-bit PNG
   - `iCCP` なし
 
@@ -36,7 +36,8 @@ npm run dev
 
 - UI: `src/App.tsx`
 - WebAssembly 本体: `public/magick.wasm`
-- 参照 ICC: `public/bt2020-pq.icc`
+- 参照 ICC: `public/success_sample.png` から抽出した ICC
+- PNG 書き出しは `MagickFormat.Png64` を使い、`IHDR bitDepth=16` を維持する
 - 発光処理は `ColorSpace.RGB` に切り替えた上で `EvaluateOperator.Multiply` による等倍率スケーリングを試しています
 - 描画マスクは PNG 化したグレースケール画像として `CopyAlpha` 合成に使っています
 
