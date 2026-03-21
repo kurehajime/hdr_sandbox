@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlphaAction,
   Channels,
-  ColorProfile,
   ColorSpace,
   CompositeOperator,
   EvaluateOperator,
@@ -14,8 +13,8 @@ import {
 } from '@imagemagick/magick-wasm'
 import './App.css'
 import hologramUrl from './assets/kira.png'
-// @ts-expect-error local .mjs module without TS declarations
-import { extractIccFromPngBytes } from './hdr/core.mjs'
+// @ts-ignore local .mjs module without stable TS resolution
+import { extractIccFromPngBytes, stripIccProfileFromPngBytes, upsertIccProfileToPngBytes } from './hdr/core.mjs'
 
 const MAX_OUTPUT_LONG_SIDE = 800
 const DEFAULT_SOURCE_MIME = 'image/png'
@@ -106,27 +105,12 @@ function prepareImageForHdrOutput(
   image: IMagickImage,
   outWidth: number,
   outHeight: number,
-  targetProfile: ColorProfile,
 ) {
   if (image.width !== outWidth || image.height !== outHeight) {
     image.resize(outWidth, outHeight)
   }
 
-  try {
-    const sourceProfile = image.getColorProfile()
-    if (sourceProfile) {
-      image.transformColorSpace(sourceProfile, targetProfile)
-    } else {
-      // Uploaded images often have no embedded ICC. Treat them as sRGB before HDR conversion.
-      image.colorSpace = ColorSpace.sRGB
-      image.transformColorSpace(targetProfile)
-    }
-  } catch {
-    image.colorSpace = ColorSpace.sRGB
-  }
-
   image.depth = 16
-  image.setProfile(targetProfile)
 }
 
 function applyLinearExposureBoost(
@@ -388,14 +372,14 @@ function App() {
       const outWidth = fitted.width
       const outHeight = fitted.height
       const maskPngBytes = await canvasToPngBytes(normalizeMaskCanvas(drawCanvas, outWidth, outHeight))
-      const targetProfile = new ColorProfile(extractIccFromPngBytes(successRefPngBytes, 'successRefPngBytes'))
+      const targetIccBytes = extractIccFromPngBytes(successRefPngBytes, 'successRefPngBytes')
 
-      const { successBytes, failBytes } = ImageMagick.read(sourceBytes, (sourceImage) => {
+      const composedBytes = ImageMagick.read(sourceBytes, (sourceImage) => {
         return sourceImage.clone((baseImage) => {
-          prepareImageForHdrOutput(baseImage, outWidth, outHeight, targetProfile)
+          prepareImageForHdrOutput(baseImage, outWidth, outHeight)
 
           return sourceImage.clone((boostedImage) => {
-            prepareImageForHdrOutput(boostedImage, outWidth, outHeight, targetProfile)
+            prepareImageForHdrOutput(boostedImage, outWidth, outHeight)
             applyLinearExposureBoost(boostedImage, exposureGain)
 
             return ImageMagick.read(maskPngBytes, (maskImage) => {
@@ -410,24 +394,19 @@ function App() {
               baseImage.alpha(AlphaAction.Set)
               baseImage.composite(boostedImage, CompositeOperator.Over)
               baseImage.depth = 16
-              baseImage.setProfile(targetProfile)
-
-              const successBytes = writePngBytes(baseImage)
-              const failBytes = baseImage.clone((failImage) => {
-                failImage.removeProfile('icc')
-                return writePngBytes(failImage)
-              })
-
-              return { successBytes, failBytes }
+              return writePngBytes(baseImage)
             })
           })
         })
       })
 
+      const successBytes = upsertIccProfileToPngBytes(composedBytes, targetIccBytes, 'composedBytes')
+      const failBytes = stripIccProfileFromPngBytes(composedBytes, 'composedBytes')
+
       setSuccessUrl(URL.createObjectURL(new Blob([successBytes], { type: 'image/png' })))
       setFailUrl(URL.createObjectURL(new Blob([failBytes], { type: 'image/png' })))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'magick-wasm による HDR PNG 生成に失敗しました。')
+      setError(err instanceof Error ? err.message : 'HDR PNG 生成に失敗しました。')
     } finally {
       setIsGenerating(false)
     }
@@ -438,7 +417,7 @@ function App() {
       <header className="app__header">
         <div>
           <h1>Light Pen HDR PNG 2</h1>
-          <p className="app__subtitle">magick-wasm で X 投稿向け HDR PNG を組み立てる実験版です。</p>
+          <p className="app__subtitle">magick-wasm で合成し、最後に自前で ICC を付け替える X 投稿向け実験版です。</p>
         </div>
         <label className="file">
           <input type="file" accept="image/*" onChange={handleFileChange} />
@@ -499,7 +478,7 @@ function App() {
           <div className="panel">
             <h2>X 向け HDR PNG</h2>
             <p className="panel__hint">
-              参照成功例の ICC を使って 16-bit PNG を組み立て、描画マスク部分だけリニア倍率で強調します。
+              合成後の 16-bit PNG にだけ参照成功例の ICC を後付けし、描画マスク部分だけリニア倍率で強調します。
             </p>
             <button type="button" onClick={handleGenerate} disabled={!hasImage || isGenerating}>
               {isGenerating ? '生成中…' : 'HDR候補を生成'}
