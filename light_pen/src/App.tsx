@@ -1,13 +1,16 @@
 import type { ChangeEvent } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { FilterType, ImageMagick, initializeImageMagick, MagickFormat } from '@imagemagick/magick-wasm'
 import './App.css'
 import hologramUrl from './assets/kira.png'
 // @ts-expect-error local .mjs module without TS declarations
-import { decodePngToRgba16, encodeRgba16Png, extractIccFromPngBytes, resizeRgba16Nearest } from './hdr/core.mjs'
+import { decodePngToRgba16, encodeRgba16Png, extractIccFromPngBytes } from './hdr/core.mjs'
 const PQ_MAX_NITS = 10000
 const SDR_REFERENCE_NITS = 203
 const STROKE_MAX_GAIN = 6.0
 const MAX_OUTPUT_LONG_SIDE = 800
+
+let magickInitPromise: Promise<void> | null = null
 
 function readU16BE(bytes: Uint8Array, offset: number): number {
   return ((bytes[offset] << 8) | bytes[offset + 1]) >>> 0
@@ -68,6 +71,27 @@ function computeAspectFitSize(width: number, height: number, maxLongSide: number
     width: Math.max(1, Math.round(width * scale)),
     height: Math.max(1, Math.round(height * scale)),
   }
+}
+
+function ensureImageMagickReady(wasmBytes: Uint8Array): Promise<void> {
+  if (!magickInitPromise) {
+    magickInitPromise = initializeImageMagick(wasmBytes)
+  }
+  return magickInitPromise
+}
+
+function resizePngBytesWithMagick(
+  pngBytes: Uint8Array,
+  outWidth: number,
+  outHeight: number,
+): Uint8Array {
+  return ImageMagick.read(pngBytes, (image) => {
+    if (image.width !== outWidth || image.height !== outHeight) {
+      image.resize(outWidth, outHeight, FilterType.Lanczos)
+    }
+    image.depth = 16
+    return image.write(MagickFormat.Png64, (data) => Uint8Array.from(data))
+  })
 }
 
 function convertRgba16SrgbToBt2020PqInPlace(rgba16be: Uint8Array) {
@@ -358,7 +382,11 @@ function App() {
     setIsGenerating(true)
     clearOutputs()
     try {
-      const successRefPngBytes = await fetchBytes(resolvePublicAssetUrl('success_sample.png'))
+      const [wasmBytes, successRefPngBytes] = await Promise.all([
+        fetchBytes(resolvePublicAssetUrl('magick.wasm')),
+        fetchBytes(resolvePublicAssetUrl('success_sample.png')),
+      ])
+      await ensureImageMagickReady(wasmBytes)
       const fitted = computeAspectFitSize(drawCanvas.width, drawCanvas.height, MAX_OUTPUT_LONG_SIDE)
       const outW = fitted.width
       const outH = fitted.height
@@ -376,14 +404,9 @@ function App() {
         maskContext.drawImage(drawCanvas, 0, 0, outW, outH)
         return maskContext.getImageData(0, 0, outW, outH)
       })()
-      const decoded = decodePngToRgba16(sourcePngBytes, 'inputPngBytes')
-      const rgba16be = resizeRgba16Nearest({
-        srcWidth: decoded.width,
-        srcHeight: decoded.height,
-        srcRgba16be: decoded.rgba16be,
-        dstWidth: outW,
-        dstHeight: outH,
-      })
+      const resizedSourcePngBytes = resizePngBytesWithMagick(sourcePngBytes, outW, outH)
+      const decoded = decodePngToRgba16(resizedSourcePngBytes, 'resizedInputPngBytes')
+      const rgba16be = decoded.rgba16be
       convertRgba16SrgbToBt2020PqInPlace(rgba16be)
       const bgCap16 = Math.max(0, Math.min(255, backgroundCap8)) * 257
 

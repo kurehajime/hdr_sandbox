@@ -37,6 +37,7 @@ npm run dev
 - HDR生成コア: `src/hdr/core.mjs`, `src/hdr/pipeline.mjs`
 - UI: `src/App.tsx`
 - 参照ICC: `public/success_sample.png`
+- 入力画像の長辺800pxへの縮小は `magick-wasm` の `Lanczos` リサイズを使う
 - 生成時に背景画像へ `sRGB -> BT.2020/PQ` 変換を適用してから iCCP/cicp を付与
 - 線描画の反映は「白へ混色」ではなく、PQの光量（nits）へ乗算ゲインを掛ける方式（色相維持）
 
