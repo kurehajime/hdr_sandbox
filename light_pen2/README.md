@@ -2,6 +2,12 @@
 
 `magick-wasm` を使って、ブラウザ内で X 投稿向け `RGBA16 + iCCP` の PNG を組み立てる実験版です。
 
+## 現在の位置づけ
+
+- 本線は [`light_pen`](../light_pen) を使ってください
+- `light_pen2` は `magick-wasm` を試すための実験枝として維持します
+- 「露光していないところの見た目もできるだけ保ちたい」という要件には、自前で色変換と PNG 組み立てを制御できる `light_pen` の方が向いています
+
 既存の [`light_pen`](../light_pen) が自前 PNG エンコーダ中心なのに対し、こちらは
 ImageMagick WASM を合成に使い、最後の ICC 付与と除去だけを `src/hdr/core.mjs` で後処理します。
 
